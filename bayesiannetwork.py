@@ -2,6 +2,8 @@ import re
 import pandas as pd
 import numpy as np
 
+
+# create a list of all the possible combination of two list
 def Combinaison(l1,l2):
     retour=[]
     for i in range (len(l1)):
