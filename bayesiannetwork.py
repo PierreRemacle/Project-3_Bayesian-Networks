@@ -146,39 +146,44 @@ class BayesianNetwork:
         x = tuple([ pa[parent.name] for parent in self.variables[Y].cpt.parents ])
         return self.P_Yisy_given_parents_x(Y,y,x)
     
+    
+    # calls computeCPT for every column in the data file
     def computeCPT_init(self, file):
         df = pd.read_csv(file, sep=',')
         for columns in df.columns:
             if (self.variables[columns].cpt.entries == None):
                 self.computeCPT(columns, df)
-    
+    # Method for computing the CPT of a columns, given a data file and the bayesian network
     def computeCPT(self, column , df):
         retour={}
-
+        #if no parents
         if (len(self.variables[column].cpt.parents)==0):
-            
             a=df[column].value_counts(normalize=True)
             a=a.to_dict()
-
-
-
             retour[()]=a
             self.variables[column].cpt.entries = retour
-
+        #if parents
         else:
             here=[]
             parents = self.variables[column].cpt.parents
-            for parent in parents:
             
+            #get the possible value for each parents and put them in a list
+            for parent in parents:
                 unique = list(np.sort(df[parent.name].unique()))
-                
                 here.append(unique)
-
+                
+            #set them as string 
             for i in range(len(here)):
                 for j in range(len(here[i])):
                     here[i][j]=str(here[i][j])
 
-           
+            #get all the possible combination of the parents
+            # example :
+            #
+            #   from [2,1,0] [1,0]
+            #
+            #   to [[2,1],[2,0],[1,1],[1,0],[0,1],[0,0]]
+            
             for i in range(len(here)-1):
                 here[0]=Combinaison(here[0],here[i+1])
             if (len(here)==1):
@@ -189,7 +194,7 @@ class BayesianNetwork:
             else:
                 combins=here[0]
             
-            
+            #for each combination, calculate the probability of each value of the column
             for combin in combins:
                 here2={}
                 for value in df[column].unique():
@@ -199,7 +204,7 @@ class BayesianNetwork:
                 retour[tuple(combin)] = here2
 
             self.variables[column].cpt.entries = retour
-            
+    # calculate the probability of a value of a column, given the combination of the parents
     def calculation(self,df,parents,combin, objective , value):
 
         dfhere = df
@@ -213,11 +218,12 @@ class BayesianNetwork:
         else:
             return dfObjective.shape[0]/dfhere.shape[0]
 
-
-bn = BayesianNetwork ( "alarm.bif" )
-def test(file):
-
 # Example for how to read a BayesianNetwork
+bn = BayesianNetwork ( "alarm.bif" )
+
+
+def test(file):
+    
     bn = BayesianNetwork ( "dummy.bif" )
 
     for var in bn.variables:
@@ -232,60 +238,9 @@ def test(file):
         print(bn.variables[var].cpt.entries )
 
     bn.write("dummy1.bif")
+test("./datasets/mini/dummy.csv")
 
-df = pd.read_csv("./datasets/alarm/train.csv", sep=',')
-
-a=df["HYPOVOLEMIA"]
-b=df["LVFAILURE"]
-c=df["LVEDVOLUME"]
-
-print(c.value_counts())
-print(len(c.value_counts()))
-
-tt=0
-tf=0
-ft=0
-ff=0
-
-count = c.value_counts()[0]
-print("------------------")
-
-for i in range (len(b)):
-
-    if(b[i] == 1 and a[i] == 1 ):
-        tt=tt+1
-    elif(b[i] == 1 and a[i] == 0 ):
-        ft=ft+1
-    elif(b[i] == 0 and a[i] == 1 ):
-        tf=tf+1
-    elif(b[i] == 0 and a[i] == 0 ):
-        ff=ff+1
-
-for j in range(3): 
-    tt2=0
-    tf2=0
-    ft2=0
-    ff2=0     
-    for i in range (len(b)):
-
-        if(b[i] == 1 and a[i] == 1 and c[i] == j):
-            tt2=tt2+1
-        elif(b[i] == 1 and a[i] == 0 and c[i] == j):
-            ft2=ft2+1
-        elif(b[i] == 0 and a[i] == 1 and c[i] == j):
-            tf2=tf2+1
-        elif(b[i] == 0 and a[i] == 0 and c[i] == j):
-            ff2=ff2+1
-    print(np.round((tt2)/(tt),2),np.round((tf2)/(tf),2),np.round((ft2)/(ft),2),np.round((ff2)/(ff),2))
-
-print(tt2,tf2,ft2,ff2)
-print(tt,tf,ft,ff)
-print(bn.variables["LVEDVOLUME"].cpt)
-
-print(df[df["LVEDVOLUME"]==0].shape[0])
-
-# c=df["LVEDVOLUME"].value_counts(normalize=True)
-
+'''
 # Example for how to write a BayesianNetwork
 bn.write("alarm2.bif")
 
@@ -309,7 +264,7 @@ print(bn.P_Yisy_given_parents("HYPOVOLEMIA","TRUE"))
 parents=bn.variables["PRESS"].cpt.parents
 
 print("--------------------------------------------------")
-
+'''
 
 
 
