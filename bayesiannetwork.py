@@ -19,6 +19,20 @@ def Combinaison(l1,l2):
             
     return retour
 
+#calculate the probability of a value of a column, given the combination of the parents
+def calculation(df,parents,combin, objective , value):
+
+    dfhere = df
+
+    for i in range(len(parents)):
+        dfhere=dfhere[dfhere[parents[i].name]==int(combin[i])]
+    dfObjective = dfhere[dfhere[objective] == value]
+
+    if (dfhere.shape[0]==0):
+        return 0
+    else:
+        return dfObjective.shape[0]/dfhere.shape[0]
+
 
 
 
@@ -155,6 +169,7 @@ class BayesianNetwork:
         for columns in df.columns:
             if (self.variables[columns].cpt.entries == None):
                 self.computeCPT(columns, df)
+                
     # Method for computing the CPT of a columns, given a data file and the bayesian network
     def computeCPT(self, column , df):
         retour={}
@@ -200,25 +215,12 @@ class BayesianNetwork:
             for combin in combins:
                 here2={}
                 for value in df[column].unique():
-                    here2[value]=self.calculation(df,parents,combin,column,value)
-                    print(here2[value])
+                    here2[value]=calculation(df,parents,combin,column,value)
 
                 retour[tuple(combin)] = here2
 
             self.variables[column].cpt.entries = retour
-    # calculate the probability of a value of a column, given the combination of the parents
-    def calculation(self,df,parents,combin, objective , value):
 
-        dfhere = df
-        print(combin)
-        for i in range(len(parents)):
-            dfhere=dfhere[dfhere[parents[i].name]==int(combin[i])]
-        dfObjective = dfhere[dfhere[objective] == value]
-
-        if (dfhere.shape[0]==0):
-            return 0
-        else:
-            return dfObjective.shape[0]/dfhere.shape[0]
 
 # Example for how to read a BayesianNetwork
 bn = BayesianNetwork ( "alarm.bif" )
