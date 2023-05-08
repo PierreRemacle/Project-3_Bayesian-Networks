@@ -298,23 +298,24 @@ class BayesianNetwork:
 bn = BayesianNetwork ( "alarm.bif" )
 
 
-def test(file):
+def test(input , file,output):
     
-    bn = BayesianNetwork ( "dummy.bif" )
+    bn = BayesianNetwork ( input )
 
     for var in bn.variables:
         
         bn.variables[var].cpt.entries = None
     
-    bn.computeCPT_init("./datasets/mini/dummy.csv")
+    bn.computeCPT_init(file)
 
 
     for var in bn.variables:
 
         print(bn.variables[var].cpt.entries )
 
-    bn.write("dummy1.bif")
-test("./datasets/mini/dummy.csv")
+    bn.write(output)
+test("dummy.bif","./datasets/mini/dummy.csv" , "dummy1.bif")
+test("alarm.bif","./datasets/alarm/train.csv" , "alarm3.bif")
 
 '''
 # Example for how to write a BayesianNetwork
