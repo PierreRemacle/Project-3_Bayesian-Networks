@@ -25,13 +25,17 @@ def calculation(df,parents,combin, objective , value,alpha,K):
     dfhere = df
 
     for i in range(len(parents)):
-        dfhere=dfhere[dfhere[parents[i].name]==int(combin[i])]
+        print(type(parents[i]))
+        print(parents[i].valuestoint(combin[i]))
+        dfhere=dfhere[dfhere[parents[i].name]==parents[i].valuestoint(combin[i])]
     dfObjective = dfhere[dfhere[objective] == value]
 
     if (dfhere.shape[0]==0):
         return 0
     else:
         return (dfObjective.shape[0]+alpha)/(dfhere.shape[0]+alpha*K)
+
+
 
 
 
@@ -79,6 +83,10 @@ class Variable:
         return f"variable {self.name} {{" + "\n" \
              + f"  type discrete [ {len(self.values)} ] {{ {(comma.join(self.values))} }};" + "\n" \
              + f"}}" + "\n"
+    def valuestoint(self , int ):
+
+        return self.values.index(int)
+        
         
 class BayesianNetwork:
 
@@ -252,15 +260,11 @@ class BayesianNetwork:
             
             #get the possible value for each parents and put them in a list
             for parent in parents:
-                #unique = list(self.variables[parent.name].values)
+                unique = list(self.variables[parent.name].values)
 
-                unique = list(np.sort(df[parent.name].unique()))
                 here.append(unique)
                 
-            #set them as string 
-            for i in range(len(here)):
-                for j in range(len(here[i])):
-                    here[i][j]=str(here[i][j])
+
 
             #get all the possible combination of the parents
             # example :
