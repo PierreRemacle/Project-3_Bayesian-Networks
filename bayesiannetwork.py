@@ -161,6 +161,72 @@ class BayesianNetwork:
     def P_Yisy_given_parents(self,Y,y,pa={}):
         x = tuple([ pa[parent.name] for parent in self.variables[Y].cpt.parents ])
         return self.P_Yisy_given_parents_x(Y,y,x)
+
+    def joint_distrib_simple(self, Y,pa={}):
+        # Find parent of Y
+
+        # all the possible value of Y
+        values = self.variables[Y].values
+        # Select the value that is the most probable
+        max_value = 0
+        max_value_index = 0
+        for i in range(len(values)):
+            tmp = self.P_Yisy_given_parents(Y,values[i],pa)
+            if tmp > max_value:
+                max_value = tmp
+                max_value_index = i
+        
+        return values[max_value_index]
+    
+    def joint_distrib_double(self, Y, pa={}):
+        # Find parent of Y
+        parent_1 = self.variables[Y[0]].cpt.parents
+        parent_2 = self.variables[Y[1]].cpt.parents
+
+        name_1 = [parent.name for parent in parent_1]
+        name_2 = [parent.name for parent in parent_2]
+
+
+        # verify if name_1 conatins Y[0]
+        if Y[0] in name_2:
+            values_1 = self.variables[Y[0]].values
+            values_2 = self.variables[Y[1]].values
+
+            max_value = 0
+            for i in range(len(values_1)):
+                tmp_1 = self.P_Yisy_given_parents(Y[0],values_1[i],pa)
+                new_dict = pa.copy()
+                new_dict[Y[0]] = values_1[i]
+
+                for j in range(len(values_2)):
+                    tmp_2 = self.P_Yisy_given_parents(Y[1],values_2[j],new_dict)
+                    if tmp_1*tmp_2 > max_value:
+                        max_value = tmp_1*tmp_2
+                        val1 = values_1[i]
+                        val2 = values_2[j]
+
+        elif Y[1] in name_1:
+            values_1 = self.variables[Y[1]].values
+            values_2 = self.variables[Y[0]].values
+
+            max_value = 0
+            for i in range(len(values_1)):
+                tmp_1 = self.P_Yisy_given_parents(Y[1],values_1[i],pa)
+                new_dict = pa.copy()
+                new_dict[Y[1]] = values_1[i]
+
+                for j in range(len(values_2)):
+                    tmp_2 = self.P_Yisy_given_parents(Y[0],values_2[j],new_dict)
+                    if tmp_1*tmp_2 > max_value:
+                        max_value = tmp_1*tmp_2
+                        val2 = values_1[i]
+                        val1 = values_2[j]
+
+        else:
+            val1 = self.joint_distrib_simple(Y[0],pa)
+            val2 = self.joint_distrib_simple(Y[1],pa)
+
+        return val1, val2
     
     
     # calls computeCPT for every column in the data file
@@ -186,6 +252,8 @@ class BayesianNetwork:
             
             #get the possible value for each parents and put them in a list
             for parent in parents:
+                #unique = list(self.variables[parent.name].values)
+
                 unique = list(np.sort(df[parent.name].unique()))
                 here.append(unique)
                 
