@@ -20,7 +20,7 @@ def Combinaison(l1,l2):
     return retour
 
 #calculate the probability of a value of a column, given the combination of the parents
-def calculation(df,parents,combin, objective , value):
+def calculation(df,parents,combin, objective , value,alpha,K):
 
     dfhere = df
 
@@ -31,7 +31,7 @@ def calculation(df,parents,combin, objective , value):
     if (dfhere.shape[0]==0):
         return 0
     else:
-        return dfObjective.shape[0]/dfhere.shape[0]
+        return (dfObjective.shape[0]+alpha)/(dfhere.shape[0]+alpha*K)
 
 
 
@@ -164,14 +164,14 @@ class BayesianNetwork:
     
     
     # calls computeCPT for every column in the data file
-    def computeCPT_init(self, file):
+    def computeCPT_init(self, file,alpha=0,K=0):
         df = pd.read_csv(file, sep=',')
         for columns in df.columns:
             if (self.variables[columns].cpt.entries == None):
-                self.computeCPT(columns, df)
+                self.computeCPT(columns, df,alpha,K)
                 
     # Method for computing the CPT of a columns, given a data file and the bayesian network
-    def computeCPT(self, column , df):
+    def computeCPT(self, column , df,alpha,K):
         retour={}
         #if no parents
         if (len(self.variables[column].cpt.parents)==0):
@@ -215,7 +215,7 @@ class BayesianNetwork:
             for combin in combins:
                 here2={}
                 for value in df[column].unique():
-                    here2[value]=calculation(df,parents,combin,column,value)
+                    here2[value]=calculation(df,parents,combin,column,value,alpha,K)
 
                 retour[tuple(combin)] = here2
 
