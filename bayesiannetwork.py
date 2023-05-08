@@ -212,35 +212,26 @@ class BayesianNetwork:
             return 0
         else:
             return dfObjective.shape[0]/dfhere.shape[0]
-        
-        
 
-        
-        
-        
-                    
-        
-                
-        
-    
-        
 
+bn = BayesianNetwork ( "alarm.bif" )
+def test(file):
 
 # Example for how to read a BayesianNetwork
-bn = BayesianNetwork ( "dummy.bif" )
+    bn = BayesianNetwork ( "dummy.bif" )
 
-for var in bn.variables:
+    for var in bn.variables:
+        
+        bn.variables[var].cpt.entries = None
     
-    bn.variables[var].cpt.entries = None
-    
-bn.computeCPT_init("./datasets/mini/dummy.csv")
+    bn.computeCPT_init("./datasets/mini/dummy.csv")
 
 
-for var in bn.variables:
+    for var in bn.variables:
 
-    print(bn.variables[var].cpt.entries )
+        print(bn.variables[var].cpt.entries )
 
-bn.write("dummy1.bif")
+    bn.write("dummy1.bif")
 
 df = pd.read_csv("./datasets/alarm/train.csv", sep=',')
 
