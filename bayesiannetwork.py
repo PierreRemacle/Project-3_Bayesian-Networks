@@ -25,8 +25,7 @@ def calculation(df,parents,combin, objective , value,alpha,K):
     dfhere = df
 
     for i in range(len(parents)):
-        print(type(parents[i]))
-        print(parents[i].valuestoint(combin[i]))
+
         dfhere=dfhere[dfhere[parents[i].name]==parents[i].valuestoint(combin[i])]
     dfObjective = dfhere[dfhere[objective] == value]
 
