@@ -92,7 +92,74 @@ class BayesianNetwork:
     # Method for reading a Bayesian Network from a BIF file;
     # fills a dictionary 'variables' with variable names mapped to Variable
     # objects having CPT objects.
-    def __init__(self, input_file):
+    def __init__(self, input_file ):
+        
+        self.df = pd.read_csv(input_file, sep=',')
+        self.variables = {}
+        for columns in self.df.columns:
+            variable_values = [str(x) for x in self.df[columns].unique()]
+
+                
+            variable = Variable(columns, variable_values)
+            variable.cpt = CPT(variable, [])
+            self.variables[columns] = variable
+        
+        self.computeCPT_init()
+        
+    def Local_move_init(self):
+        
+        
+        var_names =self.df.columns.tolist()
+        print(var_names)
+        
+        for i in range(len(var_names)):
+            local_var_names = var_names.copy()
+            toconnect =local_var_names[i]
+            local_var_names.remove(toconnect)
+            
+            
+            self.Local_move(var_names ,toconnect)
+        
+    def Local_move(self, var_names ,toconnect):
+        previous_score = self.score()
+        previous_parents = self.variables[toconnect].cpt.parents.copy()
+        previous_entries = self.variables[toconnect].cpt.entries.copy()
+        
+        for name in var_names:
+            self.variables[toconnect].cpt.parents.append(self.variables[name])
+            self.computeCPT(toconnect,self.df)
+            score = self.score()
+            if score < previous_score:
+                self.variables[toconnect].cpt.parents = previous_parents
+                self.variables[toconnect].cpt.entries = previous_entries
+            else:
+                previous_score = score
+        
+        
+        
+            
+        
+    def score (self):
+        score =0
+        col = self.df.columns.tolist()
+        for _,rows in self.df.iterrows():
+            prob=1
+            dico = {}
+
+            
+            for columns in self.df.columns:
+                
+                dico[columns] = rows[columns]
+            for col in dico:
+                prob*=self.P_Yisy_given_parents(col,dico[col],dico)
+            score-=np.log(prob)
+        return(score)
+                
+            
+            
+        
+        
+    def load(self, input_file):
 
         with open(input_file) as f:
             lines = f.readlines()
@@ -222,21 +289,25 @@ class BayesianNetwork:
     
     
     # calls computeCPT for every column in the data file
-    def computeCPT_init(self, file,alpha=0,K=0):
-        df = pd.read_csv(file, sep=',')
-        for columns in df.columns:
-            if (self.variables[columns].cpt.entries == None):
-                self.computeCPT(columns, df,alpha,K)
+    def computeCPT_init(self,alpha=0,K=0):
+        
+        for columns in self.df.columns:
+            if (self.variables[columns].cpt.entries == {}):
+                
+                self.computeCPT(columns, alpha,K)
                 
     # Method for computing the CPT of a columns, given a data file and the bayesian network
-    def computeCPT(self, column , df,alpha,K):
+    def computeCPT(self, column ,alpha=0,K=0):
         retour={}
         #if no parents
+        
         if (len(self.variables[column].cpt.parents)==0):
-            a=df[column].value_counts(normalize=True)
+            a=self.df[column].value_counts(normalize=True)
             a=a.to_dict()
             retour[()]=a
             self.variables[column].cpt.entries = retour
+            print(retour)
+            
         #if parents
         else:
             here=[]
@@ -270,8 +341,8 @@ class BayesianNetwork:
             #for each combination, calculate the probability of each value of the column
             for combin in combins:
                 here2={}
-                for value in df[column].unique():
-                    here2[value]=calculation(df,parents,combin,column,value,alpha,K)
+                for value in self.df[column].unique():
+                    here2[value]=calculation(self.df,parents,combin,column,value,alpha,K)
 
                 retour[tuple(combin)] = here2
 
@@ -279,27 +350,29 @@ class BayesianNetwork:
 
 
 # Example for how to read a BayesianNetwork
-bn = BayesianNetwork ( "test.bif" )
+bn = BayesianNetwork ( "./datasets/mini/dummy.csv" )
+print(bn.score())
+bn.Local_move_init()
 
-
-def test(input , file,output):
+bn.write("dummy3.bif")
+# def test(input , file,output):
     
-    bn = BayesianNetwork ( input )
+#     bn = BayesianNetwork ( input )
 
-    for var in bn.variables:
+#     for var in bn.variables:
         
-        bn.variables[var].cpt.entries = None
+#         bn.variables[var].cpt.entries = None
     
-    bn.computeCPT_init(file)
+#     bn.computeCPT_init(file)
 
 
-    for var in bn.variables:
+#     for var in bn.variables:
 
-        print(bn.variables[var].cpt.entries )
+#         print(bn.variables[var].cpt.entries )
 
-    bn.write(output)
-test("dummy.bif","./datasets/mini/dummy.csv" , "dummy1.bif")
-test("alarm.bif","./datasets/alarm/train.csv" , "alarm3.bif")
+#     bn.write(output)
+# test("dummy.bif","./datasets/mini/dummy.csv" , "dummy1.bif")
+# test("alarm.bif","./datasets/alarm/train.csv" , "alarm3.bif")
 
 '''
 # Example for how to write a BayesianNetwork
@@ -326,9 +399,9 @@ parents=bn.variables["PRESS"].cpt.parents
 
 print("--------------------------------------------------")
 '''
-print(bn.joint_distrib_simple('FLU', {'FEVER':'TRUE','FATIGUE': 'TRUE'}))
+# print(bn.joint_distrib_simple('FLU', {'FEVER':'TRUE','FATIGUE': 'TRUE'}))
 
-print(bn.joint_distrib_double(['FLU', 'FEVER'],{'FATIGUE': 'TRUE'}))
+# print(bn.joint_distrib_double(['FLU', 'FEVER'],{'FATIGUE': 'TRUE'}))
 
 
 
