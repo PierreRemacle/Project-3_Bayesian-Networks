@@ -122,7 +122,7 @@ class BayesianNetwork:
                 dico[columns] = str(rows[columns])
             for col in dico:
                 prob *= self.P_Yisy_given_parents(col, dico[col], dico)
-            score -= np.log(prob)
+            score += np.log(prob)
 
         return score
 
@@ -314,7 +314,7 @@ class BayesianNetwork:
 
 
 # Example for how to read a BayesianNetwork
-bn = BayesianNetwork("./datasets/mini/dummy.csv")
+"""bn = BayesianNetwork("./datasets/mini/dummy.csv")
 bn.variables["Burglar"].cpt.parents.append(bn.variables["Alarm"])
 
 
@@ -323,7 +323,7 @@ print(bn.variables["Burglar"].cpt.entries)
 bn.write("dummy3.bif")
 
 bn.load("dummy3.bif")
-print(bn.variables["Burglar"].cpt.entries)
+print(bn.variables["Burglar"].cpt.entries)"""
 # def test(input , file,output):
 
 #     bn = BayesianNetwork ( input )
@@ -373,42 +373,53 @@ print("--------------------------------------------------")
 # print(bn.joint_distrib_double(['FLU', 'FEVER'],{'FATIGUE': 'TRUE'}))
 
 
-def local_move(bn, var_isolated, max_score):
-    best_graph = bn
+def local_move(bn, var_isolated):
+    best_graph = []
+    score = bn.score()
+    changed = False
     # best_score = max_score
     if len(var_isolated) < 2:
-        return best_graph, max_score
+        best_graph = [var for var in var_isolated]
+        return best_graph, score
     else:
         for var1 in var_isolated:
             for var2 in var_isolated:
                 if var1 != var2:
                     bn.variables[var1].cpt.parents.append(bn.variables[var2])
                     bn.computeCPT(var1)
-                    score = bn.score()
 
-                    if score > max_score:
-                        var_isolated.remove(var2)
-                        var_isolated.remove(var1)
 
-                        best_graph, max_score = local_move(bn, var_isolated, score)
+                    var_isolated.remove(var2)
+                    var_isolated.remove(var1)
 
-                        var_isolated.append(var1)
-                        var_isolated.append(var2)
+                    compo, previous_score = local_move(bn, var_isolated)
+
+                    if previous_score > score:
+                        best_graph = [(var1, var2), compo]
+
+                        score = previous_score
+                        changed = True
+
+
+
+                    var_isolated.append(var1)
+                    var_isolated.append(var2)
 
                     bn.variables[var1].cpt.parents.remove(bn.variables[var2])
                     bn.computeCPT(var1)
 
-    return best_graph, max_score
+        if not changed:
+            best_graph = [var for var in var_isolated]
+            
+    return best_graph, score
 
 
 def find_best_graph(file):
     bn = BayesianNetwork(file)
     var_isolated = [var for var in bn.variables]
-    print(var_isolated)
-    score = bn.score()
-    bn, max_score = local_move(bn, var_isolated, score)
+    bn, max_score = local_move(bn, var_isolated)
 
     return bn, max_score
 
 
-# print(find_best_graph("./datasets/mini/dummy.csv")[1])
+print(find_best_graph("./datasets/mini/dummy.csv"))
