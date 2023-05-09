@@ -188,7 +188,8 @@ class BayesianNetwork:
             denominator += prob
         
         for value in values:
-            num[value] /= denominator
+            if denominator != 0:
+                num[value] /= denominator
 
         return num
         
@@ -214,7 +215,8 @@ class BayesianNetwork:
                 denominator += prob
         
         for value in num:
-            num[value] /= denominator
+            if denominator != 0:
+                num[value] /= denominator
                 
         return num
     
