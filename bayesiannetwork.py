@@ -2,6 +2,8 @@ import re
 import pandas as pd
 import numpy as np
 import itertools
+from copy import deepcopy
+
 
 
 """# create a list of all the possible combination of two list
@@ -44,6 +46,11 @@ class CPT:
         # assignment to the parents; the associated value is a dictionnary
         # itself, reflecting one row in the CPT.
         # For a variable that has no parents, the key is the empty tuple.
+    def copy(self):
+
+        new_cpt = CPT(self.head, self.parents.copy())
+        new_cpt.entries = deepcopy(self.entries)
+        return new_cpt
 
     # String representation of the CPT according to the BIF format
     def __str__(self):
@@ -76,6 +83,10 @@ class Variable:
         self.values = values
         # The domain of the variable: names of the values
         self.cpt = None  # No CPT initially
+    def copy(self):
+        new_variable = Variable(self.name, self.values.copy())
+        new_variable.cpt = self.cpt.copy()
+        return new_variable
 
     # String representation of the variable according to the BIF format
     def __str__(self):
@@ -97,8 +108,11 @@ class BayesianNetwork:
     # Method for reading a Bayesian Network from a BIF file;
     # fills a dictionary 'variables' with variable names mapped to Variable
     # objects having CPT objects.
-    def __init__(self, input_file):
-        self.df = pd.read_csv(input_file, sep=",")
+    def __init__(self, input_file = None):
+        if (input_file == None):
+            self.df = pd.DataFrame()
+        else:
+            self.df = pd.read_csv(input_file, sep=",")
         self.variables = {}
         for columns in self.df.columns:
             sorted = np.sort(self.df[columns].unique())
@@ -109,6 +123,18 @@ class BayesianNetwork:
             self.variables[columns] = variable
 
         self.computeCPT_init()
+
+    def copy(self):
+        new_network = BayesianNetwork()
+        new_network.variables = {}
+        new_network.df = self.df.copy()
+
+        for variable_name, variable in self.variables.items():
+            new_variable = Variable(variable.name, variable.values)
+            new_variable.cpt = variable.cpt.copy()
+            new_network.variables[variable_name] = new_variable
+
+        return new_network
 
     def score(self):
         score = 0
@@ -125,6 +151,33 @@ class BayesianNetwork:
             score += np.log(prob)
 
         return score
+    def score_BIC(self):
+        score = 0
+        num_parameters = 0  # Number of free parameters
+
+        col = self.df.columns.tolist()
+        num_data_points = len(self.df)
+
+        for _, rows in self.df.iterrows():
+            prob = 1
+            dico = {}
+
+            for columns in self.df.columns:
+                dico[columns] = str(rows[columns])
+
+            for col in dico:
+                prob = self.P_Yisy_given_parents(col, dico[col], dico)
+            score += np.log(prob)
+
+        # Calculate the number of free parameters
+        for variable in self.variables.values():
+            num_parents = len(variable.cpt.parents)
+            num_values = len(variable.values)
+            num_parameters += (num_values - 1) (num_parents + 1)
+
+        bic = 2 * score + num_parameters * np.log(num_data_points)
+        return bic
+
 
     def load(self, input_file):
         with open(input_file) as f:
@@ -198,6 +251,7 @@ class BayesianNetwork:
     # and x an assignment to its parents in the network, specified
     # in the correct order of parents.
     def P_Yisy_given_parents_x(self, Y, y, x=tuple()):
+
         return self.variables[Y].cpt.entries[x][y]
 
     # Example method: returns the probability P(Y=y|X=x),
@@ -292,20 +346,27 @@ class BayesianNetwork:
             # for each combination, calculate the probability of each value of the column
             for combin in combins:
                 tmp = self.df.copy()
-
-                for row in tmp.index:
+                todrop = []
+                for row in tmp.index:                   
                     for i in range(len(combin)):
-                        if str(tmp[parents_name[i]][row]) != combin[i]:
-                            tmp = tmp.drop(row)
-
+                        par =parents_name[i]
+                        a_1 = tmp[par]
+                        a= a_1[row]
+                        b= combin[i]
+                        if str(a) != b:
+                            todrop.append(row)
+                          
+                tmp.drop(todrop, inplace=True)
                 denom = len(tmp) + alpha * K
 
                 values = {}
                 sorted = np.sort(self.df[column].unique())
                 for value in sorted:
                     num = len(tmp[tmp[column] == value]) + alpha
-
-                    prob = num / denom
+                    if denom != 0:
+                        prob = num / denom
+                    else:
+                        prob = 0
                     values[str(value)] = prob
 
                 retour[combin] = values
@@ -422,4 +483,9 @@ def find_best_graph(file):
     return bn, max_score
 
 
-print(find_best_graph("./datasets/mini/dummy.csv"))
+# print(find_best_graph("./datasets/mini/dummy.csv"))
+bn = BayesianNetwork("./datasets/alarm/train.csv")
+
+
+
+
