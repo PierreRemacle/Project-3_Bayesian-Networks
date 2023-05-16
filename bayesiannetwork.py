@@ -385,8 +385,7 @@ class BayesianNetwork:
 
             for parent in graph.get(node, []):
                 if parent not in visited:
-                    if dfs(parent):
-                        return True
+                    return dfs(parent)
 
             return False
 
@@ -395,18 +394,10 @@ class BayesianNetwork:
             parents = [parent.name for parent in variable.cpt.parents]
             graph[variable.name] = parents
 
-        # Add the new parent to the variable temporarily
-        self.variables[variable_name].cpt.parents.append(
-            self.variables[new_parent_name]
-        )
 
         # Check if adding the parent creates a cycle
         result = dfs(new_parent_name)
 
-        # Remove the temporary parent
-        self.variables[variable_name].cpt.parents.remove(
-            self.variables[new_parent_name]
-        )
 
         return result
 
