@@ -427,21 +427,19 @@ def local_movev2(bn, vars):
 
     while(True):
         x = random.choice(vars) # String
-        print(x)
 
         score_improvmement = 0
         for i in range(1,6):
             count = np.round(0.3 * len(vars))
-            print(count)
             
-            parents = random.sample(vars, int(count))
+            parents = random.sample(vars, int(count)) # String []
 
             if x in parents:
                 parents.remove(x)
-            print(parents)
+            #print(parents)
 
-            true_parents = [parent for parent in bn.variables[x].cpt.parents]
-            print(true_parents)
+            true_parents = [parent.name for parent in bn.variables[x].cpt.parents] # String []
+            #print(true_parents)
 
             for parent in parents:
                 if parent not in true_parents:
@@ -481,6 +479,8 @@ def local_movev2(bn, vars):
 
 def find_best_graphv2(file):
     bn = BayesianNetwork(file)
+    bn.variables["Burglar"].cpt.parents.append(bn.variables["Alarm"])
+    bn.computeCPT("Burglar")
     vars = [var for var in bn.variables]
     bn, max_score = local_movev2(bn, vars)
 
