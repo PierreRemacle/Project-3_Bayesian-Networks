@@ -372,6 +372,44 @@ class BayesianNetwork:
                 retour[combin] = values
 
             self.variables[column].cpt.entries = retour
+            
+    def creates_cycle(self, variable_name, new_parent_name):
+        graph = {}
+        visited = set()
+
+        def dfs(node):
+            visited.add(node)
+
+            if node == variable_name:
+                return True
+
+            for parent in graph.get(node, []):
+                if parent not in visited:
+                    if dfs(parent):
+                        return True
+
+            return False
+
+        # Create a graph representation of the Bayesian network
+        for variable in self.variables.values():
+            parents = [parent.name for parent in variable.cpt.parents]
+            graph[variable.name] = parents
+
+        # Add the new parent to the variable temporarily
+        self.variables[variable_name].cpt.parents.append(
+            self.variables[new_parent_name]
+        )
+
+        # Check if adding the parent creates a cycle
+        result = dfs(new_parent_name)
+
+        # Remove the temporary parent
+        self.variables[variable_name].cpt.parents.remove(
+            self.variables[new_parent_name]
+        )
+
+        return result
+
 
 
 # Example for how to read a BayesianNetwork
@@ -484,7 +522,12 @@ def find_best_graph(file):
 
 
 # print(find_best_graph("./datasets/mini/dummy.csv"))
-bn = BayesianNetwork("./datasets/alarm/train.csv")
+bn = BayesianNetwork("./datasets/mini/dummy.csv")
+
+bn.variables["Burglar"].cpt.parents.append(bn.variables["Alarm"])
+bn.variables["Alarm"].cpt.parents.append(bn.variables["Earthquake"])
+print(bn.creates_cycle("Earthquake", "Alarm"))
+print(bn.creates_cycle("Burglar", "JohnCalls"))
 
 
 
