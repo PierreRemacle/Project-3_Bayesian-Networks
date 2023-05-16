@@ -3,38 +3,7 @@ import pandas as pd
 import numpy as np
 import itertools
 from copy import deepcopy
-
-
-
-"""# create a list of all the possible combination of two list
-def Combinaison(l1, l2):
-    retour = []
-    for i in range(len(l1)):
-        for j in range(len(l2)):
-            if type(l1[i]) != list:
-                retour.append([l1[i], l2[j]])
-            else:
-                l1copy = l1[i].copy()
-                l1copy.append(l2[j])
-
-                retour.append(l1copy)
-
-    return retour
-
-
-# calculate the probability of a value of a column, given the combination of the parents
-def calculation(df, parents, combin, objective, value, alpha, K):
-    dfhere = df
-
-    for i in range(len(parents)):
-        dfhere = dfhere[dfhere[parents[i].name] == parents[i].valuestoint(combin[i])]
-    dfObjective = dfhere[dfhere[objective] == value]
-
-    if dfhere.shape[0] == 0:
-        return 0
-    else:
-        return (dfObjective.shape[0] + alpha) / (dfhere.shape[0] + alpha * K)"""
-
+import random
 
 # A class for representing the CPT of a variable
 class CPT:
@@ -403,66 +372,6 @@ class BayesianNetwork:
 
 
 
-# Example for how to read a BayesianNetwork
-"""bn = BayesianNetwork("./datasets/mini/dummy.csv")
-bn.variables["Burglar"].cpt.parents.append(bn.variables["Alarm"])
-
-
-bn.computeCPT("Burglar")
-print(bn.variables["Burglar"].cpt.entries)
-bn.write("dummy3.bif")
-
-bn.load("dummy3.bif")
-print(bn.variables["Burglar"].cpt.entries)"""
-# def test(input , file,output):
-
-#     bn = BayesianNetwork ( input )
-
-#     for var in bn.variables:
-
-#         bn.variables[var].cpt.entries = None
-
-#     bn.computeCPT_init(file)
-
-
-#     for var in bn.variables:
-
-#         print(bn.variables[var].cpt.entries )
-
-#     bn.write(output)
-# test("dummy.bif","./datasets/mini/dummy.csv" , "dummy1.bif")
-# test("alarm.bif","./datasets/alarm/train.csv" , "alarm3.bif")
-
-"""
-# Example for how to write a BayesianNetwork
-bn.write("alarm2.bif")
-
-# Examples for how to get an entry from the CPT
-
-# return P(HISTORY=TRUE|LVFAILURE=TRUE)
-print(bn.P_Yisy_given_parents_x("HISTORY","TRUE",("TRUE",)))
-# or
-print(bn.P_Yisy_given_parents("HISTORY","TRUE",{"LVFAILURE":"TRUE"}))
-
-# return P(HRBP=NORMAL|ERRLOWOUTPUT=TRUE,HR=LOW)
-print(bn.P_Yisy_given_parents_x("HRBP","NORMAL",("TRUE","LOW")))
-# or
-print(bn.P_Yisy_given_parents("HRBP","NORMAL",{"ERRLOWOUTPUT":"TRUE","HR":"LOW"}))
-
-# return P(HYPOVOLEMIA=TRUE)
-print(bn.P_Yisy_given_parents_x("HYPOVOLEMIA","TRUE"))
-# or
-print(bn.P_Yisy_given_parents("HYPOVOLEMIA","TRUE"))
-
-parents=bn.variables["PRESS"].cpt.parents
-
-print("--------------------------------------------------")
-"""
-# print(bn.joint_distrib_simple('FLU', {'FEVER':'TRUE','FATIGUE': 'TRUE'}))
-
-# print(bn.joint_distrib_double(['FLU', 'FEVER'],{'FATIGUE': 'TRUE'}))
-
-
 def local_move(bn, var_isolated):
     best_graph = []
     score = bn.score()
@@ -511,13 +420,70 @@ def find_best_graph(file):
 
     return bn, max_score
 
+def local_movev2(bn, vars):
+    best_score = bn.score()
+    best_graph = bn.copy()
+
+    while(True):
+        x = random.choice(vars)
+
+        score_improvmement = 0
+        for i in range(1,6):
+            prop = i * 0.1 * len(vars)-1
+            parents = random.sample(vars, prop)
+
+            if x in parents:
+                parents.remove(x)
+            
+            true_parents = [parent for parent in x.cpt.parents]
+            for parent in parents:
+                if parent not in true_parents:
+                    # check cycle
+                    # add
+                    # compute cpt
+                    # score improvmement
+                    # if score improvmement > last: Store the action and last = score improvmement
+                    pass
+                else:
+                    # if(Remove)
+                    # Remove
+                    # Compute cpt
+                    # score improvmement
+                    # if score improvmement > last: Store the action and last = score improvmement
+
+                    # if(Reverse)
+                    # Reverse = Remove + add
+                    # check cycle
+                    # add
+                    # Remove
+                    # compute 2 cpt
+                    # score improvmement
+                    # if score improvmement > last: Store the action and last = score improvmement
+
+                    pass
+        # Apply the action and update the score if score_improvmement > 0
+
+        # Check if the score has been changed during the X last iterations
+        # if not break
+
+                
+
+    return best_graph, best_score
+
+def find_best_graph(file):
+    bn = BayesianNetwork(file)
+    vars = [var for var in bn.variables]
+    bn, max_score = local_movev2(bn, vars)
+
+    return bn, max_score
+
 
 # print(find_best_graph("./datasets/mini/dummy.csv"))
 bn = BayesianNetwork("./datasets/mini/dummy.csv")
 
 bn.variables["Burglar"].cpt.parents.append(bn.variables["Alarm"])
 bn.variables["Alarm"].cpt.parents.append(bn.variables["Earthquake"])
-print(bn.check_cycle("Earthquake", "Alarm"))
+print(bn.check_cycle("Earthquake", "Burglar"))
 print(bn.check_cycle("Burglar", "JohnCalls"))
 
 
