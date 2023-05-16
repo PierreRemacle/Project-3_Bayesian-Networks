@@ -1,0 +1,53 @@
+variable Burglar {
+  type discrete [ 2 ] { 0, 1 };
+}
+variable Earthquake {
+  type discrete [ 2 ] { 0, 1 };
+}
+variable Alarm {
+  type discrete [ 2 ] { 0, 1 };
+}
+variable MaryCalls {
+  type discrete [ 2 ] { 0, 1 };
+}
+variable JohnCalls {
+  type discrete [ 2 ] { 0, 1 };
+}
+probability ( Burglar | Earthquake, MaryCalls, JohnCalls ) {
+  (0, 0, 0) 1.0, 0.0;
+  (0, 0, 1) 0.5, 0.5;
+  (0, 1, 0) 1.0, 0.0;
+  (0, 1, 1) 0.0, 1.0;
+  (1, 0, 0) 1.0, 0.0;
+  (1, 0, 1) 0, 0;
+  (1, 1, 0) 0, 0;
+  (1, 1, 1) 0.0, 1.0;
+}
+probability ( Earthquake | Alarm ) {
+  (0) 0.6666666666666666, 0.3333333333333333;
+  (1) 0.75, 0.25;
+}
+probability ( Alarm | Burglar, MaryCalls, Earthquake ) {
+  (0, 0, 0) 0.5, 0.5;
+  (0, 0, 1) 1.0, 0.0;
+  (0, 1, 0) 1.0, 0.0;
+  (0, 1, 1) 0, 0;
+  (1, 0, 0) 0.0, 1.0;
+  (1, 0, 1) 0, 0;
+  (1, 1, 0) 0.0, 1.0;
+  (1, 1, 1) 0.0, 1.0;
+}
+probability ( MaryCalls | Burglar, Alarm, Earthquake ) {
+  (0, 0, 0) 0.5, 0.5;
+  (0, 0, 1) 1.0, 0.0;
+  (0, 1, 0) 1.0, 0.0;
+  (0, 1, 1) 0, 0;
+  (1, 0, 0) 0, 0;
+  (1, 0, 1) 0, 0;
+  (1, 1, 0) 0.5, 0.5;
+  (1, 1, 1) 0.0, 1.0;
+}
+probability ( JohnCalls | Alarm ) {
+  (0) 1.0, 0.0;
+  (1) 0.0, 1.0;
+}
