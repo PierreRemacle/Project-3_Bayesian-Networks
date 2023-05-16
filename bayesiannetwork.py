@@ -345,6 +345,20 @@ class BayesianNetwork:
                 retour[combin] = values
 
             self.variables[column].cpt.entries = retour
+
+    def check_cyclev2(self, variable_name, new_parent_name):
+
+        parents = [parent.name for parent in self.variables[new_parent_name].cpt.parents]
+
+
+        if variable_name in parents:
+            return True
+        else:
+            for p in parents:
+                if self.check_cyclev2(variable_name, p):
+                    return True
+        return False
+    
             
     def check_cycle(self, variable_name, new_parent_name):
         graph = {}
@@ -449,7 +463,7 @@ def local_movev2(bn, vars):
             for parent in parents:
                 if parent not in true_parents:
                     # check cycle
-                    check = bn.check_cycle(x, parent)
+                    check = bn.check_cyclev2(x, parent)
                     if not check:
                         # add
                         bn.variables[x].cpt.parents.append(bn.variables[parent])
@@ -493,7 +507,7 @@ def local_movev2(bn, vars):
                     bn.variables[x].cpt.parents.remove(bn.variables[parent])
                     bn.computeCPT(x)
                     # add
-                    check = bn.check_cycle(parent, x)
+                    check = bn.check_cyclev2(parent, x)
                     if not check:
                         bn.variables[parent].cpt.parents.append(bn.variables[x])
                         # compute cpt

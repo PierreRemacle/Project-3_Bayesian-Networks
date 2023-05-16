@@ -13,32 +13,30 @@ variable MaryCalls {
 variable JohnCalls {
   type discrete [ 2 ] { 0, 1 };
 }
-probability ( Burglar | Alarm, MaryCalls ) {
-  (0, 0) 1.0, 0.0;
-  (0, 1) 1.0, 0.0;
-  (1, 0) 0.5, 0.5;
-  (1, 1) 0.0, 1.0;
+probability ( Burglar | MaryCalls ) {
+  (0) 0.75, 0.25;
+  (1) 0.3333333333333333, 0.6666666666666666;
 }
-probability ( Earthquake | JohnCalls, Burglar ) {
+probability ( Earthquake | Burglar, MaryCalls ) {
   (0, 0) 0.6666666666666666, 0.3333333333333333;
-  (0, 1) 0, 0;
+  (0, 1) 1.0, 0.0;
   (1, 0) 1.0, 0.0;
-  (1, 1) 0.6666666666666666, 0.3333333333333333;
+  (1, 1) 0.5, 0.5;
 }
-probability ( Alarm ) {
+probability ( Alarm | JohnCalls ) {
+  (0) 1.0, 0.0;
+  (1) 0.0, 1.0;
+}
+probability ( MaryCalls ) {
   table 0.5714285714285714, 0.42857142857142855;
 }
-probability ( MaryCalls | Earthquake, JohnCalls, Burglar ) {
+probability ( JohnCalls | Earthquake, Burglar, MaryCalls ) {
   (0, 0, 0) 0.5, 0.5;
-  (0, 0, 1) 0, 0;
-  (0, 1, 0) 1.0, 0.0;
-  (0, 1, 1) 0.5, 0.5;
+  (0, 0, 1) 1.0, 0.0;
+  (0, 1, 0) 0.0, 1.0;
+  (0, 1, 1) 0.0, 1.0;
   (1, 0, 0) 1.0, 0.0;
   (1, 0, 1) 0, 0;
   (1, 1, 0) 0, 0;
   (1, 1, 1) 0.0, 1.0;
-}
-probability ( JohnCalls | Alarm ) {
-  (0) 1.0, 0.0;
-  (1) 0.0, 1.0;
 }
