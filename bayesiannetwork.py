@@ -438,7 +438,7 @@ def local_movev2(bn, vars):
                 parents.remove(x)
             #print(parents)
 
-            true_parents = [parent.name for parent in bn.variables[x].cpt.parents] # String []
+            true_parents = [parent.name for parent in best_graph.variables[x].cpt.parents] # String []
             #print(true_parents)
 
             for parent in parents:
