@@ -479,7 +479,7 @@ def local_movev2(bn, vars):
                     # if score improvmement > last: Store the action and last = score improvmement
                     if tmp_score > score_improvmement:
                         score_improvmement = tmp_score
-                        graph_improvmement = "remove_" + x + "_" + parent
+                        action = "remove_" + x + "_" + parent
 
                     # add
                     bn.variables[x].cpt.parents.append(bn.variables[parent])
@@ -503,7 +503,7 @@ def local_movev2(bn, vars):
                         # if score improvmement > last: Store the action and last = score improvmement
                         if tmp_score > score_improvmement:
                             score_improvmement = tmp_score
-                            graph_improvmement = "reverse_" + x + "_" + parent
+                            action = "reverse_" + x + "_" + parent
                         
                         # remove
                         bn.variables[parent].cpt.parents.remove(bn.variables[x])
@@ -546,7 +546,7 @@ def find_best_graphv2(file):
     vars = [var for var in bn.variables]
     bn, max_score = local_movev2(bn, vars)
     bn.write("dummy4.bif")
-
+    print("hello")
     return bn, max_score
 
 
