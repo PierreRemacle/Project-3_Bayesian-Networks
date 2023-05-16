@@ -373,7 +373,7 @@ class BayesianNetwork:
 
             self.variables[column].cpt.entries = retour
             
-    def creates_cycle(self, variable_name, new_parent_name):
+    def check_cycle(self, variable_name, new_parent_name):
         graph = {}
         visited = set()
 
@@ -517,8 +517,8 @@ bn = BayesianNetwork("./datasets/mini/dummy.csv")
 
 bn.variables["Burglar"].cpt.parents.append(bn.variables["Alarm"])
 bn.variables["Alarm"].cpt.parents.append(bn.variables["Earthquake"])
-print(bn.creates_cycle("Earthquake", "Alarm"))
-print(bn.creates_cycle("Burglar", "JohnCalls"))
+print(bn.check_cycle("Earthquake", "Alarm"))
+print(bn.check_cycle("Burglar", "JohnCalls"))
 
 
 
