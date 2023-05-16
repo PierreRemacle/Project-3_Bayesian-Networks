@@ -423,19 +423,26 @@ def find_best_graph(file):
 def local_movev2(bn, vars):
     best_score = bn.score()
     best_graph = bn.copy()
+    print(len(vars))
 
     while(True):
-        x = random.choice(vars)
+        x = random.choice(vars) # String
+        print(x)
 
         score_improvmement = 0
         for i in range(1,6):
-            prop = i * 0.1 * len(vars)-1
-            parents = random.sample(vars, prop)
+            count = np.round(0.3 * len(vars))
+            print(count)
+            
+            parents = random.sample(vars, int(count))
 
             if x in parents:
                 parents.remove(x)
-            
-            true_parents = [parent for parent in x.cpt.parents]
+            print(parents)
+
+            true_parents = [parent for parent in bn.variables[x].cpt.parents]
+            print(true_parents)
+
             for parent in parents:
                 if parent not in true_parents:
                     # check cycle
@@ -465,12 +472,14 @@ def local_movev2(bn, vars):
 
         # Check if the score has been changed during the X last iterations
         # if not break
+        break
 
                 
 
     return best_graph, best_score
 
-def find_best_graph(file):
+
+def find_best_graphv2(file):
     bn = BayesianNetwork(file)
     vars = [var for var in bn.variables]
     bn, max_score = local_movev2(bn, vars)
@@ -478,13 +487,13 @@ def find_best_graph(file):
     return bn, max_score
 
 
-# print(find_best_graph("./datasets/mini/dummy.csv"))
-bn = BayesianNetwork("./datasets/mini/dummy.csv")
+print(find_best_graphv2("./datasets/mini/dummy.csv"))
+"""bn = BayesianNetwork("./datasets/mini/dummy.csv")
 
 bn.variables["Burglar"].cpt.parents.append(bn.variables["Alarm"])
 bn.variables["Alarm"].cpt.parents.append(bn.variables["Earthquake"])
 print(bn.check_cycle("Earthquake", "Burglar"))
-print(bn.check_cycle("Burglar", "JohnCalls"))
+print(bn.check_cycle("Burglar", "JohnCalls"))"""
 
 
 
