@@ -151,16 +151,17 @@ class BayesianNetwork:
 
         # Calculate the number of free parameters
         for variable in self.variables.values():
-            num_parents = len(variable.cpt.parents)
+            """num_parents = len(variable.cpt.parents)
             num_values = len(variable.values)
-            num_parameters += (num_values - 1)*(num_parents + 1)
-            #mult_parent = 1
-            #for parent in variable.cpt.parents:
-            #    mult_parent *= nbr_values[parent.name]
+            num_parameters += (num_values - 1)*(num_parents + 1)"""
+            mult_parent = 1
+            for parent in variable.cpt.parents:
+                mult_parent *= nbr_values[parent.name]
 
-            #num_parameters += (nbr_values[variable.name]-1) * mult_parent
+            num_parameters += (nbr_values[variable.name]-1) * mult_parent
 
         bic = score - (0.5 * num_parameters * np.log(num_data_points))
+        #bic = score - num_parameters
         return bic
 
 
@@ -394,7 +395,7 @@ class BayesianNetwork:
 
         # Show the plot
         plt.axis("off")
-        plt.savefig("network2.pdf", bbox_inches='tight')
+        plt.savefig("net_asia2.pdf", bbox_inches='tight')
 
     def plot_progression(self):
         plt.figure()
@@ -538,14 +539,14 @@ def local_movev4(bn, vars, score_function=""):
         action = ""
         
         parents_tested = []
-        for i in range(3):
-            count = np.round(0.3 * len(vars))
+        for i in range(1):
+            """count = np.round(0.3 * len(vars))
             
-            parents = random.sample(vars, int(count)) # String []
-            #parents = [var for var in vars if var != x]
+            parents = random.sample(vars, int(count)) # String []"""
+            parents = [var for var in vars if var != x]
 
-            if (x in parents):
-                parents.remove(x)
+            """if (x in parents):
+                parents.remove(x)"""
 
 
             true_parents = [parent.name for parent in bn.variables[x].cpt.parents] # String []
@@ -664,7 +665,7 @@ def local_movev4(bn, vars, score_function=""):
 def find_best_graph(file):
     bn = BayesianNetwork(file)
     var_isolated = [var for var in bn.variables]
-    bn, max_score = local_movev4(bn, var_isolated, "BIC")
+    bn, max_score = local_movev4(bn, var_isolated, "")
 
     #test = bn.score_BIC()
     #bn, max_score = local_movev4(bn, var_isolated, var_isolated.copy())
@@ -675,7 +676,7 @@ def find_best_graph(file):
     return bn, max_score
 
 #print(find_best_graph("./datasets/mini/dummy.csv"))
-print(find_best_graph("./datasets/sachs/train.csv"))
+print(find_best_graph("./datasets/asia/train.csv"))
 
 
 
