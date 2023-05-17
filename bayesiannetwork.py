@@ -346,93 +346,26 @@ class BayesianNetwork:
 
             self.variables[column].cpt.entries = retour
 
-    def check_cyclev2(self, variable_name, new_parent_name):
+    def check_cylcle(self, variable_name, new_parent_name):
 
         parents = [parent.name for parent in self.variables[new_parent_name].cpt.parents]
 
+        if parents == []:
+            return False
 
         if variable_name in parents:
             return True
         else:
             for p in parents:
-                if self.check_cyclev2(variable_name, p):
+                if self.check_cylcle(variable_name, p):
                     return True
         return False
     
-            
-    def check_cycle(self, variable_name, new_parent_name):
-        graph = {}
-        visited = set()
-
-        def dfs(node):
-            visited.add(node)
-
-            if node == variable_name:
-                return True
-
-            for parent in graph.get(node, []):
-                if parent not in visited:
-                    return dfs(parent)
-
-            return False
-
-        # Create a graph representation of the Bayesian network
-        for variable in self.variables.values():
-            parents = [parent.name for parent in variable.cpt.parents]
-            graph[variable.name] = parents
-
-
-        # Check if adding the parent creates a cycle
-        result = dfs(new_parent_name)
-
-
-        return result
-
-
-
-def local_move(bn, var_isolated):
-    best_graph = []
+    
+def local_movev1(bn, var_isolated):
+    """Simple local such that an isolated node can only be linked to another isolated node. Recusriv way"""
     score = bn.score()
-    changed = False
-    # best_score = max_score
-    if len(var_isolated) < 2:
-        best_graph = [var for var in var_isolated]
-        return best_graph, score
-    else:
-        for var1 in var_isolated:
-            for var2 in var_isolated:
-                if var1 != var2:
-                    bn.variables[var1].cpt.parents.append(bn.variables[var2])
-                    bn.computeCPT(var1)
-                    tmp = bn.score()
-                    if tmp > score:
-
-
-                        var_isolated.remove(var2)
-                        var_isolated.remove(var1)
-
-                        compo, previous_score = local_move(bn, var_isolated)
-
-                        if previous_score > score:
-                            best_graph = [(var1, var2), compo]
-
-                            score = previous_score
-                            changed = True
-
-                        var_isolated.append(var1)
-                        var_isolated.append(var2)
-
-                    bn.variables[var1].cpt.parents.remove(bn.variables[var2])
-                    bn.computeCPT(var1)
-
-        if not changed:
-            best_graph = [var for var in var_isolated]
-            
-    return best_graph, score
-
-def local_movev4(bn, var_isolated):
-    score = bn.score()
-    # best_score = max_score
+    
     if len(var_isolated) < 2:
         return bn, score
     else:
@@ -454,18 +387,53 @@ def local_movev4(bn, var_isolated):
                     bn.computeCPT(var1)
         
         if max_imp > 0:
-            print(max_comp)
             bn.variables[max_comp[0]].cpt.parents.append(bn.variables[max_comp[1]])
             bn.computeCPT(max_comp[0])
             var_isolated.remove(max_comp[0])
             var_isolated.remove(max_comp[1])
-            bn, score = local_movev4(bn, var_isolated)
+            bn, score = local_movev1(bn, var_isolated)
+
+            
+    return bn, bn.score()
+
+def local_movev2(bn, var_isolated, vars):
+    """Simple local such that an isolated node can be linked to any other node. Recusriv way"""
+    score = bn.score()
+    # best_score = max_score
+    if len(var_isolated) == 0:
+        return bn, score
+    else:
+        max_imp = 0
+        max_comp = []
+        for var1 in var_isolated:
+            for var2 in vars:
+                if var1 != var2:
+                    bn.variables[var1].cpt.parents.append(bn.variables[var2])
+                    bn.computeCPT(var1)
+                    tmp = bn.score()
+                    if tmp > score:
+                        imp = tmp - score
+                        if imp > max_imp:
+                            max_imp = imp
+                            max_comp = [var1, var2]
+
+                    bn.variables[var1].cpt.parents.remove(bn.variables[var2])
+                    bn.computeCPT(var1)
+        
+        if max_imp > 0:
+            bn.variables[max_comp[0]].cpt.parents.append(bn.variables[max_comp[1]])
+            bn.computeCPT(max_comp[0])
+            var_isolated.remove(max_comp[0])
+            if max_comp[1] in var_isolated:
+                var_isolated.remove(max_comp[1])
+            bn, score = local_movev2(bn, var_isolated, vars)
 
             
     return bn, bn.score()
 
 def local_movev3(bn, var_isolated):
-    print(len(var_isolated))
+    """Simple local such that an isolated node can be linked to any other node. Iterative way"""
+    vars = [var for var in var_isolated]
     score = bn.score()
 
     max_score = score
@@ -486,41 +454,35 @@ def local_movev3(bn, var_isolated):
     for i in range(len(var_isolated)):
         matrix_score[i,i] = -1
 
-    while(True):
+    while(len(var_isolated) > 0):
                 
         #max_value = np.max(matrix_score)
         i, j = np.unravel_index(matrix_score.argmax(), matrix_score.shape)     
 
-        if matrix_score[i,j] <= 0 or len(var_isolated) <= 1:
+        if matrix_score[i,j] <= 0:
             break
         else:
             var1 = var_isolated[i]
-            var2 = var_isolated[j]
+            var2 = vars[j]
             bn.variables[var1].cpt.parents.append(bn.variables[var2])
             bn.computeCPT(var1)
             # delete the row and column of the max score
             matrix_score = np.delete(matrix_score, i, 0)
-            matrix_score = np.delete(matrix_score, i, 1)
+            #matrix_score = np.delete(matrix_score, i, 1)
             var_isolated.remove(var1)
 
-            j = var_isolated.index(var2)
-            matrix_score = np.delete(matrix_score, j, 0)
-            matrix_score = np.delete(matrix_score, j, 1)
-            var_isolated.remove(var2)
+            if var2 in var_isolated:
+                j = var_isolated.index(var2)
+                matrix_score = np.delete(matrix_score, j, 0)
+                #matrix_score = np.delete(matrix_score, j, 1)
+                var_isolated.remove(var2)
 
             
     return bn, bn.score()
 
 
-def find_best_graph(file):
-    bn = BayesianNetwork(file)
-    var_isolated = [var for var in bn.variables]
-    bn, max_score = local_movev4(bn, var_isolated)
-    bn.write("alarm6.bif")
-
-    return bn, max_score
-
-def local_movev2(bn, vars):
+def local_movev4(bn, vars):
+    """Complex local move using Stochastic Greedy Search"""
     best_score = bn.score()
 
     without_improvement = 0
@@ -529,87 +491,89 @@ def local_movev2(bn, vars):
 
         score_improvmement = best_score
         action = ""
-
+        
+        parents_tested = []
         for i in range(1):
-            #count = np.round(0.3 * len(vars))
+            count = np.round(0.3 * len(vars))
             
-            #parents = random.sample(vars, int(count)) # String []
-            parents = [var for var in vars if var != x]
+            parents = random.sample(vars, int(count)) # String []
+            #parents = [var for var in vars if var != x]
 
-            """if x in parents:
-                parents.remove(x)"""
-            #print(parents)
+            if (x in parents):
+                parents.remove(x)
+
 
             true_parents = [parent.name for parent in bn.variables[x].cpt.parents] # String []
-            #print(true_parents)
 
             for parent in parents:
-                if parent not in true_parents:
-                    # check cycle
-                    check = bn.check_cyclev2(x, parent)
-                    if not check:
+                if parent not in parents_tested:
+                    parents_tested.append(parent)
+                    if parent not in true_parents:
+                        # check cycle
+                        check = bn.check_cylcle(x, parent)
+                        if not check:
+                            # add
+                            bn.variables[x].cpt.parents.append(bn.variables[parent])
+                            # compute cpt
+                            bn.computeCPT(x)
+                            # score improvmement
+                            tmp_score = bn.score()
+                            # if score improvmement > last: Store the action and last = score improvmement
+                            if tmp_score > score_improvmement:
+                                score_improvmement = tmp_score
+                                action = "add_" + x + "_" + parent
+
+                            # remove
+                            bn.variables[x].cpt.parents.remove(bn.variables[parent])
+                            # compute cpt
+                            bn.computeCPT(x)
+                        
+                    else:
+                        
+                        # if(Remove)
+                        # Remove
+                        bn.variables[x].cpt.parents.remove(bn.variables[parent])
+                        # Compute cpt
+                        bn.computeCPT(x)
+                        # score improvmement
+                        tmp_score = bn.score()
+                        # if score improvmement > last: Store the action and last = score improvmement
+                        if tmp_score > score_improvmement:
+                            score_improvmement = tmp_score
+                            action = "remove_" + x + "_" + parent
+
                         # add
                         bn.variables[x].cpt.parents.append(bn.variables[parent])
                         # compute cpt
                         bn.computeCPT(x)
-                        # score improvmement
-                        tmp_score = bn.score()
-                        # if score improvmement > last: Store the action and last = score improvmement
-                        if tmp_score > score_improvmement:
-                            score_improvmement = tmp_score
-                            action = "add_" + x + "_" + parent
 
-                        # remove
+
+                        # if(Reverse)
+                        # Reverse = Remove + add
+                        # Remove
                         bn.variables[x].cpt.parents.remove(bn.variables[parent])
-                        # compute cpt
                         bn.computeCPT(x)
-                    
-                else:
-                    
-                    # if(Remove)
-                    # Remove
-                    bn.variables[x].cpt.parents.remove(bn.variables[parent])
-                    # Compute cpt
-                    bn.computeCPT(x)
-                    # score improvmement
-                    tmp_score = bn.score()
-                    # if score improvmement > last: Store the action and last = score improvmement
-                    if tmp_score > score_improvmement:
-                        score_improvmement = tmp_score
-                        action = "remove_" + x + "_" + parent
-
-                    # add
-                    bn.variables[x].cpt.parents.append(bn.variables[parent])
-                    # compute cpt
-                    bn.computeCPT(x)
-
-
-                    # if(Reverse)
-                    # Reverse = Remove + add
-                    # Remove
-                    bn.variables[x].cpt.parents.remove(bn.variables[parent])
-                    bn.computeCPT(x)
-                    # add
-                    check = bn.check_cyclev2(parent, x)
-                    if not check:
-                        bn.variables[parent].cpt.parents.append(bn.variables[x])
+                        # add
+                        check = bn.check_cylcle(parent, x)
+                        if not check:
+                            bn.variables[parent].cpt.parents.append(bn.variables[x])
+                            # compute cpt
+                            bn.computeCPT(parent)
+                            # score improvmement
+                            tmp_score = bn.score()
+                            # if score improvmement > last: Store the action and last = score improvmement
+                            if tmp_score > score_improvmement:
+                                score_improvmement = tmp_score
+                                action = "reverse_" + x + "_" + parent
+                            
+                            # remove
+                            bn.variables[parent].cpt.parents.remove(bn.variables[x])
+                            # compute cpt
+                            bn.computeCPT(parent)
+                        #add
+                        bn.variables[x].cpt.parents.append(bn.variables[parent])
                         # compute cpt
-                        bn.computeCPT(parent)
-                        # score improvmement
-                        tmp_score = bn.score()
-                        # if score improvmement > last: Store the action and last = score improvmement
-                        if tmp_score > score_improvmement:
-                            score_improvmement = tmp_score
-                            action = "reverse_" + x + "_" + parent
-                        
-                        # remove
-                        bn.variables[parent].cpt.parents.remove(bn.variables[x])
-                        # compute cpt
-                        bn.computeCPT(parent)
-                    #add
-                    bn.variables[x].cpt.parents.append(bn.variables[parent])
-                    # compute cpt
-                    bn.computeCPT(x)                        
+                        bn.computeCPT(x)                        
         print(best_score)
         # Apply the action and update the score if score_improvmement > 0
         if score_improvmement > best_score:
@@ -638,28 +602,17 @@ def local_movev2(bn, vars):
 
     return bn, best_score
 
-
-def find_best_graphv2(file):
+def find_best_graph(file):
     bn = BayesianNetwork(file)
-    vars = [var for var in bn.variables]
-    print(len(vars))
-    bn, max_score = local_movev2(bn, vars)
-    bn.write("alarm.bif")
-    print("hello")
+    var_isolated = [var for var in bn.variables]
+    #bn, max_score = local_movev3(bn, var_isolated)
+    #bn, max_score = local_movev4(bn, var_isolated, var_isolated.copy())
+    #bn.write("sachs_simple_v5.bif")
+
     return bn, max_score
 
-#print(find_best_graph("./datasets/mini/dummy.csv"))
-#print(find_best_graphv2("./datasets/mini/dummy.csv"))
 
-print(find_best_graph("./datasets/alarm/train.csv"))
-#print(find_best_graphv2("./datasets/alarm/train.csv"))
 
-"""bn = BayesianNetwork("./datasets/mini/dummy.csv")
-
-bn.variables["Burglar"].cpt.parents.append(bn.variables["Alarm"])
-bn.variables["Alarm"].cpt.parents.append(bn.variables["Earthquake"])
-print(bn.check_cycle("Earthquake", "Burglar"))
-print(bn.check_cycle("Burglar", "JohnCalls"))"""
 
 
 
