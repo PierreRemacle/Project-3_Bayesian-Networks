@@ -17,11 +17,8 @@ probability ( Burglar | MaryCalls ) {
   (0) 0.75, 0.25;
   (1) 0.3333333333333333, 0.6666666666666666;
 }
-probability ( Earthquake | MaryCalls, Alarm ) {
-  (0, 0) 0.5, 0.5;
-  (0, 1) 1.0, 0.0;
-  (1, 0) 1.0, 0.0;
-  (1, 1) 0.5, 0.5;
+probability ( Earthquake ) {
+  table 0.7142857142857143, 0.2857142857142857;
 }
 probability ( Alarm | JohnCalls ) {
   (0) 1.0, 0.0;
@@ -30,9 +27,6 @@ probability ( Alarm | JohnCalls ) {
 probability ( MaryCalls ) {
   table 0.5714285714285714, 0.42857142857142855;
 }
-probability ( JohnCalls | Burglar, MaryCalls ) {
-  (0, 0) 0.6666666666666666, 0.3333333333333333;
-  (0, 1) 1.0, 0.0;
-  (1, 0) 0.0, 1.0;
-  (1, 1) 0.0, 1.0;
+probability ( JohnCalls ) {
+  table 0.5714285714285714, 0.42857142857142855;
 }

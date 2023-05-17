@@ -404,23 +404,23 @@ def local_move(bn, var_isolated):
                 if var1 != var2:
                     bn.variables[var1].cpt.parents.append(bn.variables[var2])
                     bn.computeCPT(var1)
+                    tmp = bn.score()
+                    if tmp > score:
 
 
-                    var_isolated.remove(var2)
-                    var_isolated.remove(var1)
+                        var_isolated.remove(var2)
+                        var_isolated.remove(var1)
 
-                    compo, previous_score = local_move(bn, var_isolated)
+                        compo, previous_score = local_move(bn, var_isolated)
 
-                    if previous_score > score:
-                        best_graph = [(var1, var2), compo]
+                        if previous_score > score:
+                            best_graph = [(var1, var2), compo]
 
-                        score = previous_score
-                        changed = True
+                            score = previous_score
+                            changed = True
 
-
-
-                    var_isolated.append(var1)
-                    var_isolated.append(var2)
+                        var_isolated.append(var1)
+                        var_isolated.append(var2)
 
                     bn.variables[var1].cpt.parents.remove(bn.variables[var2])
                     bn.computeCPT(var1)
@@ -430,11 +430,93 @@ def local_move(bn, var_isolated):
             
     return best_graph, score
 
+def local_movev4(bn, var_isolated):
+    score = bn.score()
+    # best_score = max_score
+    if len(var_isolated) < 2:
+        return bn, score
+    else:
+        max_imp = 0
+        max_comp = []
+        for var1 in var_isolated:
+            for var2 in var_isolated:
+                if var1 != var2:
+                    bn.variables[var1].cpt.parents.append(bn.variables[var2])
+                    bn.computeCPT(var1)
+                    tmp = bn.score()
+                    if tmp > score:
+                        imp = tmp - score
+                        if imp > max_imp:
+                            max_imp = imp
+                            max_comp = [var1, var2]
+
+                    bn.variables[var1].cpt.parents.remove(bn.variables[var2])
+                    bn.computeCPT(var1)
+        
+        if max_imp > 0:
+            print(max_comp)
+            bn.variables[max_comp[0]].cpt.parents.append(bn.variables[max_comp[1]])
+            bn.computeCPT(max_comp[0])
+            var_isolated.remove(max_comp[0])
+            var_isolated.remove(max_comp[1])
+            bn, score = local_movev4(bn, var_isolated)
+
+            
+    return bn, bn.score()
+
+def local_movev3(bn, var_isolated):
+    print(len(var_isolated))
+    score = bn.score()
+
+    max_score = score
+    matrix_score = np.zeros((len(var_isolated),len(var_isolated)))
+
+    for i,var1 in enumerate(var_isolated):
+        print(i)
+
+        for j,var2 in enumerate(var_isolated):
+            if var1 != var2:
+                bn.variables[var1].cpt.parents.append(bn.variables[var2])
+                bn.computeCPT(var1)
+                matrix_score[i,j] = bn.score()
+                bn.variables[var1].cpt.parents.remove(bn.variables[var2])
+                bn.computeCPT(var1)
+
+    matrix_score -= max_score
+    for i in range(len(var_isolated)):
+        matrix_score[i,i] = -1
+
+    while(True):
+                
+        #max_value = np.max(matrix_score)
+        i, j = np.unravel_index(matrix_score.argmax(), matrix_score.shape)     
+
+        if matrix_score[i,j] <= 0 or len(var_isolated) <= 1:
+            break
+        else:
+            var1 = var_isolated[i]
+            var2 = var_isolated[j]
+            bn.variables[var1].cpt.parents.append(bn.variables[var2])
+            bn.computeCPT(var1)
+            # delete the row and column of the max score
+            matrix_score = np.delete(matrix_score, i, 0)
+            matrix_score = np.delete(matrix_score, i, 1)
+            var_isolated.remove(var1)
+
+            j = var_isolated.index(var2)
+            matrix_score = np.delete(matrix_score, j, 0)
+            matrix_score = np.delete(matrix_score, j, 1)
+            var_isolated.remove(var2)
+
+            
+    return bn, bn.score()
+
 
 def find_best_graph(file):
     bn = BayesianNetwork(file)
     var_isolated = [var for var in bn.variables]
-    bn, max_score = local_move(bn, var_isolated)
+    bn, max_score = local_movev4(bn, var_isolated)
+    bn.write("alarm6.bif")
 
     return bn, max_score
 
@@ -448,13 +530,14 @@ def local_movev2(bn, vars):
         score_improvmement = best_score
         action = ""
 
-        for i in range(1,6):
-            count = np.round(0.3 * len(vars))
+        for i in range(1):
+            #count = np.round(0.3 * len(vars))
             
-            parents = random.sample(vars, int(count)) # String []
+            #parents = random.sample(vars, int(count)) # String []
+            parents = [var for var in vars if var != x]
 
-            if x in parents:
-                parents.remove(x)
+            """if x in parents:
+                parents.remove(x)"""
             #print(parents)
 
             true_parents = [parent.name for parent in bn.variables[x].cpt.parents] # String []
@@ -527,7 +610,7 @@ def local_movev2(bn, vars):
                     bn.variables[x].cpt.parents.append(bn.variables[parent])
                     # compute cpt
                     bn.computeCPT(x)                        
-
+        print(best_score)
         # Apply the action and update the score if score_improvmement > 0
         if score_improvmement > best_score:
             best_score = score_improvmement
@@ -545,6 +628,7 @@ def local_movev2(bn, vars):
                 
             without_improvement = 0
         else:
+            print("no improvement")
             without_improvement += 1
 
         # Check if the score has been changed during the X last iterations
@@ -558,14 +642,18 @@ def local_movev2(bn, vars):
 def find_best_graphv2(file):
     bn = BayesianNetwork(file)
     vars = [var for var in bn.variables]
+    print(len(vars))
     bn, max_score = local_movev2(bn, vars)
-    bn.write("dummy4.bif")
+    bn.write("alarm.bif")
     print("hello")
     return bn, max_score
 
+#print(find_best_graph("./datasets/mini/dummy.csv"))
+#print(find_best_graphv2("./datasets/mini/dummy.csv"))
 
-print(find_best_graph("./datasets/mini/dummy.csv"))
-print(find_best_graphv2("./datasets/mini/dummy.csv"))
+print(find_best_graph("./datasets/alarm/train.csv"))
+#print(find_best_graphv2("./datasets/alarm/train.csv"))
+
 """bn = BayesianNetwork("./datasets/mini/dummy.csv")
 
 bn.variables["Burglar"].cpt.parents.append(bn.variables["Alarm"])

@@ -1,0 +1,255 @@
+variable LVFAILURE {
+  type discrete [ 2 ] { 0, 1 };
+}
+variable HISTORY {
+  type discrete [ 2 ] { 0, 1 };
+}
+variable LVEDVOLUME {
+  type discrete [ 3 ] { 0, 1, 2 };
+}
+variable CVP {
+  type discrete [ 3 ] { 0, 1, 2 };
+}
+variable PCWP {
+  type discrete [ 3 ] { 0, 1, 2 };
+}
+variable HYPOVOLEMIA {
+  type discrete [ 2 ] { 0, 1 };
+}
+variable STROKEVOLUME {
+  type discrete [ 3 ] { 0, 1, 2 };
+}
+variable ERRLOWOUTPUT {
+  type discrete [ 2 ] { 0, 1 };
+}
+variable HRBP {
+  type discrete [ 3 ] { 0, 1, 2 };
+}
+variable HR {
+  type discrete [ 3 ] { 0, 1, 2 };
+}
+variable ERRCAUTER {
+  type discrete [ 2 ] { 0, 1 };
+}
+variable HREKG {
+  type discrete [ 3 ] { 0, 1, 2 };
+}
+variable HRSAT {
+  type discrete [ 3 ] { 0, 1, 2 };
+}
+variable ANAPHYLAXIS {
+  type discrete [ 2 ] { 0, 1 };
+}
+variable TPR {
+  type discrete [ 3 ] { 0, 1, 2 };
+}
+variable ARTCO2 {
+  type discrete [ 3 ] { 0, 1, 2 };
+}
+variable EXPCO2 {
+  type discrete [ 4 ] { 0, 1, 2, 3 };
+}
+variable VENTLUNG {
+  type discrete [ 4 ] { 0, 1, 2, 3 };
+}
+variable INTUBATION {
+  type discrete [ 3 ] { 0, 1, 2 };
+}
+variable MINVOL {
+  type discrete [ 4 ] { 0, 1, 2, 3 };
+}
+variable FIO2 {
+  type discrete [ 2 ] { 0, 1 };
+}
+variable PVSAT {
+  type discrete [ 3 ] { 0, 1, 2 };
+}
+variable VENTALV {
+  type discrete [ 4 ] { 0, 1, 2, 3 };
+}
+variable SAO2 {
+  type discrete [ 3 ] { 0, 1, 2 };
+}
+variable SHUNT {
+  type discrete [ 2 ] { 0, 1 };
+}
+variable PULMEMBOLUS {
+  type discrete [ 2 ] { 0, 1 };
+}
+variable PAP {
+  type discrete [ 3 ] { 0, 1, 2 };
+}
+variable PRESS {
+  type discrete [ 4 ] { 0, 1, 2, 3 };
+}
+variable KINKEDTUBE {
+  type discrete [ 2 ] { 0, 1 };
+}
+variable VENTTUBE {
+  type discrete [ 4 ] { 0, 1, 2, 3 };
+}
+variable MINVOLSET {
+  type discrete [ 3 ] { 0, 1, 2 };
+}
+variable VENTMACH {
+  type discrete [ 4 ] { 0, 1, 2, 3 };
+}
+variable DISCONNECT {
+  type discrete [ 2 ] { 0, 1 };
+}
+variable CATECHOL {
+  type discrete [ 2 ] { 0, 1 };
+}
+variable INSUFFANESTH {
+  type discrete [ 2 ] { 0, 1 };
+}
+variable CO {
+  type discrete [ 3 ] { 0, 1, 2 };
+}
+variable BP {
+  type discrete [ 3 ] { 0, 1, 2 };
+}
+probability ( LVFAILURE | HISTORY ) {
+  (0) 0.8481012658227848, 0.1518987341772152;
+  (1) 0.0039447731755424065, 0.9960552268244576;
+}
+probability ( HISTORY ) {
+  table 0.950625, 0.049375;
+}
+probability ( LVEDVOLUME | PCWP ) {
+  (0) 0.7516778523489933, 0.2348993288590604, 0.013422818791946308;
+  (1) 0.005519779208831647, 0.9898804047838087, 0.004599816007359705;
+  (2) 0.0027472527472527475, 0.03571428571428571, 0.9615384615384616;
+}
+probability ( CVP | HYPOVOLEMIA ) {
+  (0) 0.04804804804804805, 0.3663663663663664, 0.5855855855855856;
+  (1) 0.11207576953433307, 0.8437253354380426, 0.04419889502762431;
+}
+probability ( PCWP ) {
+  table 0.679375, 0.2275, 0.093125;
+}
+probability ( HYPOVOLEMIA ) {
+  table 0.791875, 0.208125;
+}
+probability ( STROKEVOLUME | CO ) {
+  (0) 0.8771929824561403, 0.12280701754385964, 0.0;
+  (1) 0.15384615384615385, 0.8391608391608392, 0.006993006993006993;
+  (2) 0.007774538386783284, 0.9251700680272109, 0.06705539358600583;
+}
+probability ( ERRLOWOUTPUT | ANAPHYLAXIS ) {
+  (0) 0.0, 1.0;
+  (1) 0.04791929382093316, 0.9520807061790668;
+}
+probability ( HRBP | HR ) {
+  (0) 0.5, 0.5, 0.0;
+  (1) 0.96, 0.025454545454545455, 0.014545454545454545;
+  (2) 0.009946442234123947, 0.0558530986993114, 0.9342004590665647;
+}
+probability ( HR ) {
+  table 0.816875, 0.171875, 0.01125;
+}
+probability ( ERRCAUTER | EXPCO2 ) {
+  (0) 0.13636363636363635, 0.8636363636363636;
+  (1) 0.08780841799709724, 0.9121915820029027;
+  (2) 0.1717171717171717, 0.8282828282828283;
+  (3) 0.21052631578947367, 0.7894736842105263;
+}
+probability ( HREKG | HRSAT ) {
+  (0) 0.8639705882352942, 0.03676470588235294, 0.09926470588235294;
+  (1) 0.053691275167785234, 0.8523489932885906, 0.09395973154362416;
+  (2) 0.009329940627650551, 0.021204410517387615, 0.9694656488549618;
+}
+probability ( HRSAT ) {
+  table 0.736875, 0.17, 0.093125;
+}
+probability ( ANAPHYLAXIS ) {
+  table 0.99125, 0.00875;
+}
+probability ( TPR | BP ) {
+  (0) 0.7156398104265402, 0.2211690363349131, 0.0631911532385466;
+  (1) 0.08385093167701864, 0.515527950310559, 0.40062111801242234;
+  (2) 0.012403100775193798, 0.5147286821705427, 0.4728682170542636;
+}
+probability ( ARTCO2 | VENTLUNG ) {
+  (0) 0.022608695652173914, 0.04173913043478261, 0.9356521739130435;
+  (1) 0.72264631043257, 0.07888040712468193, 0.1984732824427481;
+  (2) 0.0625, 0.875, 0.0625;
+  (3) 0.024390243902439025, 0.0, 0.975609756097561;
+}
+probability ( EXPCO2 ) {
+  table 0.86125, 0.061875, 0.04125, 0.035625;
+}
+probability ( VENTLUNG ) {
+  table 0.71875, 0.245625, 0.025625, 0.01;
+}
+probability ( INTUBATION | SHUNT ) {
+  (0) 0.9582191780821918, 0.03767123287671233, 0.00410958904109589;
+  (1) 0.5, 0.02142857142857143, 0.4785714285714286;
+}
+probability ( MINVOL | VENTALV ) {
+  (0) 0.967420814479638, 0.005429864253393665, 0.01085972850678733, 0.016289592760180997;
+  (1) 0.2920353982300885, 0.6283185840707964, 0.017699115044247787, 0.061946902654867256;
+  (2) 0.3125, 0.125, 0.46875, 0.09375;
+  (3) 0.050314465408805034, 0.0031446540880503146, 0.006289308176100629, 0.940251572327044;
+}
+probability ( FIO2 | INSUFFANESTH ) {
+  (0) 0.032679738562091505, 0.9673202614379085;
+  (1) 0.04837595024187975, 0.9516240497581202;
+}
+probability ( PVSAT | SAO2 ) {
+  (0) 0.9920634920634921, 0.0, 0.007936507936507936;
+  (1) 0.22807017543859648, 0.631578947368421, 0.14035087719298245;
+  (2) 0.024734982332155476, 0.0, 0.9752650176678446;
+}
+probability ( VENTALV ) {
+  table 0.690625, 0.19875, 0.070625, 0.04;
+}
+probability ( SAO2 ) {
+  table 0.7875, 0.176875, 0.035625;
+}
+probability ( SHUNT ) {
+  table 0.9125, 0.0875;
+}
+probability ( PULMEMBOLUS | PAP ) {
+  (0) 0.0, 1.0;
+  (1) 0.002758620689655172, 0.9972413793103448;
+  (2) 0.12941176470588237, 0.8705882352941177;
+}
+probability ( PAP ) {
+  table 0.90625, 0.053125, 0.040625;
+}
+probability ( PRESS | DISCONNECT ) {
+  (0) 0.10119047619047619, 0.03571428571428571, 0.0, 0.8630952380952381;
+  (1) 0.018854748603351956, 0.29399441340782123, 0.22625698324022347, 0.46089385474860334;
+}
+probability ( KINKEDTUBE ) {
+  table 0.95875, 0.04125;
+}
+probability ( VENTTUBE | VENTMACH ) {
+  (0) 0.9285714285714286, 0.011904761904761904, 0.03571428571428571, 0.023809523809523808;
+  (1) 1.0, 0.0, 0.0, 0.0;
+  (2) 0.11360239162929746, 0.8647234678624813, 0.011210762331838564, 0.01046337817638266;
+  (3) 0.010416666666666666, 0.010416666666666666, 0.10416666666666667, 0.875;
+}
+probability ( MINVOLSET | CATECHOL ) {
+  (0) 0.11538461538461539, 0.7371794871794872, 0.14743589743589744;
+  (1) 0.04016620498614958, 0.9182825484764543, 0.04155124653739612;
+}
+probability ( VENTMACH ) {
+  table 0.83625, 0.06, 0.0525, 0.05125;
+}
+probability ( DISCONNECT ) {
+  table 0.895, 0.105;
+}
+probability ( CATECHOL ) {
+  table 0.9025, 0.0975;
+}
+probability ( INSUFFANESTH ) {
+  table 0.904375, 0.095625;
+}
+probability ( CO ) {
+  table 0.643125, 0.17875, 0.178125;
+}
+probability ( BP ) {
+  table 0.403125, 0.395625, 0.20125;
+}
