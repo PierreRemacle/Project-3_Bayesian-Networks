@@ -5,6 +5,10 @@ import itertools
 from copy import deepcopy
 import random
 
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import networkx as nx
+
 # A class for representing the CPT of a variable
 class CPT:
     def __init__(self, head, parents):
@@ -78,6 +82,7 @@ class BayesianNetwork:
     # fills a dictionary 'variables' with variable names mapped to Variable
     # objects having CPT objects.
     def __init__(self, input_file = None):
+        self.progress=[]
         if (input_file == None):
             self.df = pd.DataFrame()
         else:
@@ -127,6 +132,8 @@ class BayesianNetwork:
     def score_BIC(self):
         score = 0
         num_parameters = 0  # Number of free parameters
+        nbr_values = {var.name: len(var.values) for var in self.variables.values()}
+        #print(nbr_values)
 
         col = self.df.columns.tolist()
         num_data_points = len(self.df)
@@ -146,9 +153,14 @@ class BayesianNetwork:
         for variable in self.variables.values():
             num_parents = len(variable.cpt.parents)
             num_values = len(variable.values)
-            num_parameters += (num_values - 1) (num_parents + 1)
+            num_parameters += (num_values - 1)*(num_parents + 1)
+            #mult_parent = 1
+            #for parent in variable.cpt.parents:
+            #    mult_parent *= nbr_values[parent.name]
 
-        bic = 2 * score + num_parameters * np.log(num_data_points)
+            #num_parameters += (nbr_values[variable.name]-1) * mult_parent
+
+        bic = score - (0.5 * num_parameters * np.log(num_data_points))
         return bic
 
 
@@ -361,6 +373,34 @@ class BayesianNetwork:
                     return True
         return False
     
+    def plot(self):
+        G = nx.Graph()
+        for var in self.variables:
+            G.add_node(var)
+        for child in self.variables:
+            for parent in self.variables[child].cpt.parents:
+                G.add_edge(parent.name, child)
+        # Visualize the directed graph with arrows
+        pos = nx.spring_layout(G)  # Compute node positions
+
+        # Draw nodes
+        nx.draw_networkx_nodes(G, pos, node_color="red", node_size=50)
+
+        # Draw edges with arrows
+        nx.draw_networkx_edges(G, pos, arrows=True,arrowstyle="->", arrowsize=10, width=2)
+
+        # Draw node labels
+        nx.draw_networkx_labels(G, pos)
+
+        # Show the plot
+        plt.axis("off")
+        plt.savefig("network2.pdf", bbox_inches='tight')
+
+    def plot_progression(self):
+        plt.figure()
+        plt.plot(self.progress)
+        plt.savefig("progression.pdf", bbox_inches='tight')
+
     
 def local_movev1(bn, var_isolated):
     """Simple local such that an isolated node can only be linked to another isolated node. Recusriv way"""
@@ -481,19 +521,24 @@ def local_movev3(bn, var_isolated):
     return bn, bn.score()
 
 
-def local_movev4(bn, vars):
+def local_movev4(bn, vars, score_function=""):
     """Complex local move using Stochastic Greedy Search"""
-    best_score = bn.score()
+    if score_function == "BIC":
+        best_score = bn.score_BIC()
+    else:
+        best_score = bn.score()
 
     without_improvement = 0
-    while(True):
+    nbr_iter = 0
+    while(nbr_iter<50):
+        nbr_iter += 1
         x = random.choice(vars) # String
 
         score_improvmement = best_score
         action = ""
         
         parents_tested = []
-        for i in range(1):
+        for i in range(3):
             count = np.round(0.3 * len(vars))
             
             parents = random.sample(vars, int(count)) # String []
@@ -517,7 +562,11 @@ def local_movev4(bn, vars):
                             # compute cpt
                             bn.computeCPT(x)
                             # score improvmement
-                            tmp_score = bn.score()
+                            if score_function == "BIC":
+                                tmp_score = bn.score_BIC()
+                            else:
+                                tmp_score = bn.score()                            
+
                             # if score improvmement > last: Store the action and last = score improvmement
                             if tmp_score > score_improvmement:
                                 score_improvmement = tmp_score
@@ -536,7 +585,12 @@ def local_movev4(bn, vars):
                         # Compute cpt
                         bn.computeCPT(x)
                         # score improvmement
-                        tmp_score = bn.score()
+                        if score_function == "BIC":
+                            tmp_score = bn.score_BIC()
+                        else:
+                            tmp_score = bn.score()
+
+
                         # if score improvmement > last: Store the action and last = score improvmement
                         if tmp_score > score_improvmement:
                             score_improvmement = tmp_score
@@ -560,7 +614,11 @@ def local_movev4(bn, vars):
                             # compute cpt
                             bn.computeCPT(parent)
                             # score improvmement
-                            tmp_score = bn.score()
+                            if score_function == "BIC":
+                                tmp_score = bn.score_BIC()
+                            else:
+                                tmp_score = bn.score()
+
                             # if score improvmement > last: Store the action and last = score improvmement
                             if tmp_score > score_improvmement:
                                 score_improvmement = tmp_score
@@ -575,6 +633,7 @@ def local_movev4(bn, vars):
                         # compute cpt
                         bn.computeCPT(x)                        
         print(best_score)
+        bn.progress.append(best_score)
         # Apply the action and update the score if score_improvmement > 0
         if score_improvmement > best_score:
             best_score = score_improvmement
@@ -595,9 +654,9 @@ def local_movev4(bn, vars):
             print("no improvement")
             without_improvement += 1
 
-        # Check if the score has been changed during the X last iterations
+        """# Check if the score has been changed during the X last iterations
         if without_improvement > 10:
-            break
+            break"""
         
 
     return bn, best_score
@@ -605,12 +664,18 @@ def local_movev4(bn, vars):
 def find_best_graph(file):
     bn = BayesianNetwork(file)
     var_isolated = [var for var in bn.variables]
-    #bn, max_score = local_movev3(bn, var_isolated)
+    bn, max_score = local_movev4(bn, var_isolated, "BIC")
+
+    #test = bn.score_BIC()
     #bn, max_score = local_movev4(bn, var_isolated, var_isolated.copy())
-    #bn.write("sachs_simple_v5.bif")
+    bn.write("test.bif")
+    bn.plot()
+    bn.plot_progression()
 
     return bn, max_score
 
+#print(find_best_graph("./datasets/mini/dummy.csv"))
+print(find_best_graph("./datasets/sachs/train.csv"))
 
 
 
