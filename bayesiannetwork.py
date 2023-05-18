@@ -528,7 +528,6 @@ def local_movev3(bn, var_isolated):
             
     return bn, bn.score()
 
-
 def SGS_local_move(bn, vars, score_function="", max_iterations=50, number_set=1, proportion=0.3):
     """Complex local move using Stochastic Greedy Search
     
@@ -569,8 +568,6 @@ def SGS_local_move(bn, vars, score_function="", max_iterations=50, number_set=1,
             set_nodes = random.sample(vars, int(count)) # String []
             if (x in set_nodes):
                 set_nodes.remove(x)
-
-            #set_nodes = [var for var in vars if var != x]
             
             # Get the set of parents of the node x
             true_parents = [parent.name for parent in bn.variables[x].cpt.parents] # String []
@@ -724,7 +721,8 @@ def value_input(bn, file, file_destination):
             if row[col] == np.NaN:
                 input.append(col)
             else:
-                pa[col] = row[col]
+
+                pa[col] = str(int(row[col]))
         # Compute the probability
         if len(input) == 1:
             distribution = bn.joint_distrib_single(input[0], pa)
@@ -762,6 +760,9 @@ def main(train_file, test_file, missing_file, netwrok_file):
     vars = [var for var in bn.variables]
     bn, _ = SGS_local_move(bn, vars, "", 50, 2, 0.3)
 
+    # Input the values
+    value_input(bn, test_file, missing_file)
+
 
     # Write the network
     bn.write(netwrok_file)
@@ -793,7 +794,7 @@ def evaluate(missing_file, test_file_inputed, test_file):
             # verify if the value is missing
             if row[col] == np.NaN:
                 nbr_missing += 1
-                if correct_test.loc[index, col] == inputed_test.loc[index, col]:
+                if str(correct_test.loc[index, col]) == inputed_test.loc[index, col]:
                     accuracy += 1
     
     print("Accuracy: ", accuracy/nbr_missing)
