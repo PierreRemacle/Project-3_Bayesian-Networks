@@ -250,12 +250,12 @@ class BayesianNetwork:
         return self.P_Yisy_given_parents_x(Y, y, x)
 
     def joint_distrib_simple(self, Y, pa={}):
-        """Return the joint distribution of Y and its parent, given in pa.
+        """Return the distribution of Y given the others variables.
         Args:
             Y (str): The name of the variable Y.
-            pa (dict): A dictionary of the parent of Y, with its value.
+            pa (dict): A dictionary of the others variables with their values.
         Returns:
-            dict: A dictionary with the joint distribution of Y and its parent.
+            dict: A dictionary with the distribution of Y and its parent.
         """
 
         # Possible valuese of Y
@@ -268,12 +268,15 @@ class BayesianNetwork:
             prob = 1
             new_dict = pa.copy()
             new_dict[Y] = value
+
+            # Calculate the probability of Y=y given its parents
             for x in new_dict:
                 prob *= self.P_Yisy_given_parents(x, new_dict[x], new_dict)
 
             num[value] = prob
             denominator += prob
 
+        # Normalize the probabilities
         for value in values:
             if denominator != 0:
                 num[value] /= denominator
@@ -281,23 +284,35 @@ class BayesianNetwork:
         return num
 
     def joint_distrib_double(self, Y, pa={}):
+        """Return the joint distribution of Y based on the others variables.
+        Args:
+            Y (str): The two variables to calculate the joint distribution.
+            pa (dict): A dictionary of the others variables with their values.
+        Returns:
+            dict: A dictionary with the joint distribution of Y given the other variables.
+        """
+
+        # Possible values of Y
         values_0 = self.variables[Y[0]].values
         values_1 = self.variables[Y[1]].values
 
         num = {}
         denominator = 0
 
+        # Iterate over each combinasions of values of Y
         for value_0 in values_0:
             for value_1 in values_1:
+
                 prob = 1
                 new_dict = pa.copy()
                 new_dict[Y[0]] = value_0
                 new_dict[Y[1]] = value_1
+                # Calculate the probability of Y[0]=value_0 and Y[1]=value_1 given its parents
                 for x in new_dict:
                     prob *= self.P_Yisy_given_parents(x, new_dict[x], new_dict)
                 num[(value_0, value_1)] = prob
                 denominator += prob
-
+        # Normalize the probabilities
         for value in num:
             if denominator != 0:
                 num[value] /= denominator
