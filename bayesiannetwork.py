@@ -250,13 +250,20 @@ class BayesianNetwork:
         return self.P_Yisy_given_parents_x(Y, y, x)
 
     def joint_distrib_simple(self, Y, pa={}):
-        # Find parent of Y
+        """Return the joint distribution of Y and its parent, given in pa.
+        Args:
+            Y (str): The name of the variable Y.
+            pa (dict): A dictionary of the parent of Y, with its value.
+        Returns:
+            dict: A dictionary with the joint distribution of Y and its parent.
+        """
 
-        # all the possible value of Y
+        # Possible valuese of Y
         values = self.variables[Y].values
 
         num = {}
         denominator = 0
+        # For each possible value of Y
         for value in values:
             prob = 1
             new_dict = pa.copy()
@@ -395,7 +402,7 @@ class BayesianNetwork:
 
         # Show the plot
         plt.axis("off")
-        plt.savefig("net_asia2.pdf", bbox_inches='tight')
+        plt.savefig("net_asia3.pdf", bbox_inches='tight')
 
     def plot_progression(self):
         plt.figure()
@@ -522,8 +529,25 @@ def local_movev3(bn, var_isolated):
     return bn, bn.score()
 
 
-def local_movev4(bn, vars, score_function=""):
-    """Complex local move using Stochastic Greedy Search"""
+def SGS_local_move(bn, vars, score_function="", max_iterations=50, number_set=1, proportion=0.3):
+    """Complex local move using Stochastic Greedy Search
+    
+    Args:
+        bn (BayesianNetwork): The Bayesian Network
+        vars (String []): The list of variables
+        score_function (String): The score function to use
+        max_iterations (int): The maximum number of iterations
+        number_set (int): The number of set to test
+        proportion (float): The proportion of variables to test in each set
+
+    Returns:
+        BayesianNetwork: The Bayesian Network
+        float: The score of the Bayesian Network
+    """
+
+    assert len(vars) > 1, "There must be at least 2 variables in the network"
+    assert proportion > 0 and proportion <= 1, "The proportion must be between 0 and 1"
+
     if score_function == "BIC":
         best_score = bn.score_BIC()
     else:
@@ -531,113 +555,122 @@ def local_movev4(bn, vars, score_function=""):
 
     without_improvement = 0
     nbr_iter = 0
-    while(nbr_iter<50):
+    while(nbr_iter<max_iterations or without_improvement<10):
         nbr_iter += 1
         x = random.choice(vars) # String
 
         score_improvmement = best_score
         action = ""
         
-        parents_tested = []
-        for i in range(1):
-            """count = np.round(0.3 * len(vars))
+        nodes_tested = []
+        for i in range(number_set):
+            # Get the set of nodes to test
+            count = np.round(proportion * len(vars))
+            set_nodes = random.sample(vars, int(count)) # String []
+            if (x in set_nodes):
+                set_nodes.remove(x)
+
+            #set_nodes = [var for var in vars if var != x]
             
-            parents = random.sample(vars, int(count)) # String []"""
-            parents = [var for var in vars if var != x]
-
-            """if (x in parents):
-                parents.remove(x)"""
-
-
+            # Get the set of parents of the node x
             true_parents = [parent.name for parent in bn.variables[x].cpt.parents] # String []
 
-            for parent in parents:
-                if parent not in parents_tested:
-                    parents_tested.append(parent)
-                    if parent not in true_parents:
-                        # check cycle
-                        check = bn.check_cylcle(x, parent)
+            # Iterate over the nodes in the set previously defined
+            for node in set_nodes:
+                # Test if we have already tested this node avoiding recomputation
+                if node not in nodes_tested:
+                    nodes_tested.append(node)
+
+                    # Test if the node is not already a parent of x
+                    if node not in true_parents:
+                        # Test the Add action
+                        # Check if adding the node as a parent of x will create a cycle
+                        check = bn.check_cylcle(x, node)
                         if not check:
-                            # add
-                            bn.variables[x].cpt.parents.append(bn.variables[parent])
-                            # compute cpt
+                            # Add the edge + update the x CPT
+                            bn.variables[x].cpt.parents.append(bn.variables[node])
                             bn.computeCPT(x)
-                            # score improvmement
+
+                            # Compute the score
                             if score_function == "BIC":
                                 tmp_score = bn.score_BIC()
                             else:
                                 tmp_score = bn.score()                            
 
-                            # if score improvmement > last: Store the action and last = score improvmement
+                            # if the score is better than the last one, store the action and the score
                             if tmp_score > score_improvmement:
                                 score_improvmement = tmp_score
-                                action = "add_" + x + "_" + parent
+                                action = "add_" + x + "_" + node
 
-                            # remove
-                            bn.variables[x].cpt.parents.remove(bn.variables[parent])
-                            # compute cpt
+                            # Reset the BN as before the add action
+                            bn.variables[x].cpt.parents.remove(bn.variables[node])
                             bn.computeCPT(x)
                         
                     else:
-                        
-                        # if(Remove)
-                        # Remove
-                        bn.variables[x].cpt.parents.remove(bn.variables[parent])
-                        # Compute cpt
+                        # As the node is a parent of x, we can test the remove action and reverse action
+                        # Remove the edge + update the x CPT
+                        bn.variables[x].cpt.parents.remove(bn.variables[node])
                         bn.computeCPT(x)
-                        # score improvmement
+
+                        # compute the score
                         if score_function == "BIC":
                             tmp_score = bn.score_BIC()
                         else:
                             tmp_score = bn.score()
 
-
-                        # if score improvmement > last: Store the action and last = score improvmement
+                        # if the score is better than the last one, store the action and the score
                         if tmp_score > score_improvmement:
                             score_improvmement = tmp_score
-                            action = "remove_" + x + "_" + parent
+                            action = "remove_" + x + "_" + node
 
-                        # add
-                        bn.variables[x].cpt.parents.append(bn.variables[parent])
-                        # compute cpt
+                        # Reset the BN as before the remove action
+                        bn.variables[x].cpt.parents.append(bn.variables[node])
                         bn.computeCPT(x)
 
 
-                        # if(Reverse)
                         # Reverse = Remove + add
-                        # Remove
-                        bn.variables[x].cpt.parents.remove(bn.variables[parent])
+
+                        # Remove the edge + update the x CPT
+                        bn.variables[x].cpt.parents.remove(bn.variables[node])
                         bn.computeCPT(x)
-                        # add
-                        check = bn.check_cylcle(parent, x)
+
+                        # Check if adding the node as a parent of x will create a cycle
+                        check = bn.check_cylcle(node, x)
                         if not check:
-                            bn.variables[parent].cpt.parents.append(bn.variables[x])
-                            # compute cpt
-                            bn.computeCPT(parent)
-                            # score improvmement
+                            # Add the edge + update the x CPT
+                            bn.variables[node].cpt.parents.append(bn.variables[x])
+                            bn.computeCPT(node)
+
+                            # compute the score
                             if score_function == "BIC":
                                 tmp_score = bn.score_BIC()
                             else:
                                 tmp_score = bn.score()
 
-                            # if score improvmement > last: Store the action and last = score improvmement
+                            # if the score is better than the last one, store the action and the score
                             if tmp_score > score_improvmement:
                                 score_improvmement = tmp_score
-                                action = "reverse_" + x + "_" + parent
+                                action = "reverse_" + x + "_" + node
                             
-                            # remove
-                            bn.variables[parent].cpt.parents.remove(bn.variables[x])
-                            # compute cpt
-                            bn.computeCPT(parent)
-                        #add
-                        bn.variables[x].cpt.parents.append(bn.variables[parent])
-                        # compute cpt
-                        bn.computeCPT(x)                        
+                            # Reset the BN as before the add action
+                            bn.variables[node].cpt.parents.remove(bn.variables[x])
+                            bn.computeCPT(node)
+
+                        # Reset the BN as before the remove action
+                        bn.variables[x].cpt.parents.append(bn.variables[node])
+                        bn.computeCPT(x)    
+        
+        # Display the result
         print(best_score)
         bn.progress.append(best_score)
-        # Apply the action and update the score if score_improvmement > 0
+
+        # Apply the action and update the score if we have found an action
+        # that gave a better score
         if score_improvmement > best_score:
+            # Update the best score
             best_score = score_improvmement
+
+            # Apply the action
             if action.startswith("add"):
                 bn.variables[x].cpt.parents.append(bn.variables[action.split("_")[2]])
                 bn.computeCPT(x)
@@ -649,34 +682,123 @@ def local_movev4(bn, vars, score_function=""):
                 bn.variables[action.split("_")[2]].cpt.parents.append(bn.variables[x])
                 bn.computeCPT(x)
                 bn.computeCPT(action.split("_")[2])
-                
+            
+            # Reset the counter
             without_improvement = 0
         else:
+            # Increment the counter
             print("no improvement")
             without_improvement += 1
 
-        """# Check if the score has been changed during the X last iterations
-        if without_improvement > 10:
-            break"""
-        
-
     return bn, best_score
 
-def find_best_graph(file):
+"""def find_best_graph(file):
     bn = BayesianNetwork(file)
     var_isolated = [var for var in bn.variables]
-    bn, max_score = local_movev4(bn, var_isolated, "")
+    #bn, max_score = local_movev4(bn, var_isolated, "")
 
     #test = bn.score_BIC()
-    #bn, max_score = local_movev4(bn, var_isolated, var_isolated.copy())
+    bn, max_score = local_movev3(bn, var_isolated)
     bn.write("test.bif")
     bn.plot()
     bn.plot_progression()
 
-    return bn, max_score
+    return bn, max_score"""
 
-#print(find_best_graph("./datasets/mini/dummy.csv"))
-print(find_best_graph("./datasets/asia/train.csv"))
+def value_input(bn, file, file_destination):
+    """Replace the missing values by the most probable value based on the Bayesian Network
+    Args:
+        bn (BayesianNetwork): Bayesian Network
+        file (string): File path of the test file
+        file_destination (string): File path of the file to write
+    """
+    df = pd.read_csv(file)
+
+    # Iterate over the rows
+    for index, row in df.iterrows():
+        pa = {}
+        input = []
+        # Iterate over the columns
+        for col in df.columns:
+            # verify if the value is missing
+            if row[col] == np.NaN:
+                input.append(col)
+            else:
+                pa[col] = row[col]
+        # Compute the probability
+        if len(input) == 1:
+            distribution = bn.joint_distrib_single(input[0], pa)
+            # Get the key of the max value
+            max_key = max(distribution, key=distribution.get)
+            # Replace the missing value by the max key
+            df.loc[index, input[0]] = max_key
+
+        elif len(input) == 2:
+            distribution = bn.joint_distrib_double(input, pa)
+            # Get the key of the max value
+            max_key = max(distribution, key=distribution.get)
+            # Replace the missing value by the max key
+            df.loc[index, input[0]] = max_key[0]
+            df.loc[index, input[1]] = max_key[1]
+        else:
+            print("Not implemented for more than 2 missing values")
+
+    df.to_csv(file_destination, index=False)
+    
+    return
+
+def main(train_file, test_file, missing_file, netwrok_file):
+    """Main function
+    Args:
+        train_file (string): File path of the train file
+        test_file (string): File path of the test file
+        missing_file (string): File path of the writed file
+        netwrok_file (string): File path of the network file
+    """
+    # Init the BN
+    bn = BayesianNetwork(train_file)
+
+    # Learn the structure
+    vars = [var for var in bn.variables]
+    bn, _ = SGS_local_move(bn, vars, "", 50, 2, 0.3)
+
+
+    # Write the network
+    bn.write(netwrok_file)
+
+    return 
+
+def evaluate(missing_file, test_file_inputed, test_file):
+    """Evaluate the performance of the network on the test set
+    Args:
+        missing_file (string): File path of the file with the missing values
+        test_file_inputed (string): File path of the file with the inputed values
+        test_file (string): File path of the file with the correct values
+        
+    Returns:
+        float: Accuracy of the network
+    """
+    # Read the files
+    correct_test = pd.read_csv(test_file)
+    inputed_test = pd.read_csv(test_file_inputed)
+    missing_file = pd.read_csv(missing_file)
+
+    accuracy = 0
+    nbr_missing = 0
+
+    # Iterate over the rows
+    for index, row in missing_file.iterrows():
+        # Iterate over the columns
+        for col in missing_file.columns:
+            # verify if the value is missing
+            if row[col] == np.NaN:
+                nbr_missing += 1
+                if correct_test.loc[index, col] == inputed_test.loc[index, col]:
+                    accuracy += 1
+    
+    print("Accuracy: ", accuracy/nbr_missing)
+
+    return accuracy/nbr_missing
 
 
 
