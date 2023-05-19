@@ -5,7 +5,7 @@ import itertools
 from copy import deepcopy
 import random
 import os
-
+import sys
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -20,11 +20,6 @@ class CPT:
         # assignment to the parents; the associated value is a dictionnary
         # itself, reflecting one row in the CPT.
         # For a variable that has no parents, the key is the empty tuple.
-    def copy(self, head):
-        
-        new_cpt = CPT(head, self.parents.copy())
-        new_cpt.entries = deepcopy(self.entries)
-        return new_cpt
 
     # String representation of the CPT according to the BIF format
     def __str__(self):
@@ -57,10 +52,6 @@ class Variable:
         self.values = values
         # The domain of the variable: names of the values
         self.cpt = None  # No CPT initially
-    def copy(self):
-        new_variable = Variable(self.name, self.values.copy())
-        new_variable.cpt = self.cpt.copy(new_variable)
-        return new_variable
 
     # String representation of the variable according to the BIF format
     def __str__(self):
@@ -85,66 +76,60 @@ class BayesianNetwork:
     def __init__(self, input_file = None):
         self.progress=[]
         self.accprogress=[]
+
+        # Read the file into a dataframe
         if (input_file == None):
             self.df = pd.DataFrame()
         else:
             self.df = pd.read_csv(input_file, sep=",")
+        
+        # Get every column name and their values
         self.variables = {}
         for columns in self.df.columns:
             sorted = np.sort(self.df[columns].unique())
             variable_values = [str(x) for x in sorted]
 
+            # Create variables
             variable = Variable(columns, variable_values)
             variable.cpt = CPT(variable, [])
             self.variables[columns] = variable
 
         self.computeCPT_init()
 
-    def copy(self):
-        new_network = BayesianNetwork()
-        new_network.variables = {}
-        new_network.df = self.df.copy()
-
-        for var in self.variables:
-            new_network.variables[var] = self.variables[var].copy()
-
-
-        """for variable_name, variable in self.variables.items():
-            new_variable = Variable(variable.name, variable.values.copy())
-            new_variable.cpt = variable.cpt.copy(new_variable)
-            new_network.variables[variable_name] = new_variable"""
-
-        return new_network
 
     def score(self):
         score = 0
 
         col = self.df.columns.tolist()
+        # For each row in the dataframe
         for _, rows in self.df.iterrows():
             prob = 1
             dico = {}
 
+            # For each column in the dataframe convert in string
             for columns in self.df.columns:
                 dico[columns] = str(rows[columns])
+
+            # Compute the log probability of the row
             for col in dico:
                 prob *= self.P_Yisy_given_parents(col, dico[col], dico)
             score += np.log(prob)
        
         return score
+    
     def score_BIC(self):
+        # compute the score
         score = self.score()
+
         num_parameters = 0  # Number of free parameters
+
+        # Get the number of values for each variable
         nbr_values = {var.name: len(var.values) for var in self.variables.values()}
-        #print(nbr_values)
+
         num_data_points = len(self.df)
 
-
-
-        # Calculate the number of free parameters
+        # Calculate the number of  parameters
         for variable in self.variables.values():
-            """num_parents = len(variable.cpt.parents)
-            num_values = len(variable.values)
-            num_parameters += (num_values - 1)*(num_parents + 1)"""
             mult_parent = 1
             for parent in variable.cpt.parents:
                 mult_parent *= nbr_values[parent.name]
@@ -152,7 +137,6 @@ class BayesianNetwork:
             num_parameters += (nbr_values[variable.name]-1) * mult_parent
         
         bic = score - (0.5 * num_parameters * np.log(num_data_points))
-        #bic = score - num_parameters
         return bic
 
 
@@ -318,9 +302,12 @@ class BayesianNetwork:
 
     # Method for computing the CPT of a columns, given a data file and the bayesian network
     def computeCPT(self, column, alpha=1, K=0):
+        # Get the number of possible values of the variable column
         K = len(self.variables[column].values)
         retour = {}
+
         # if no parents
+        # Calculate the probability of each value of the column
         if len(self.variables[column].cpt.parents) == 0:
             a = self.df[column].value_counts(normalize=True)
             a = a.to_dict()
@@ -330,9 +317,9 @@ class BayesianNetwork:
             self.variables[column].cpt.entries = retour
 
         # if parents
-
         else:
             here = []
+            # Get the parents
             parents_name = [x.name for x in self.variables[column].cpt.parents]
 
             # get the possible value for each parents and put them in a list
@@ -341,8 +328,8 @@ class BayesianNetwork:
 
                 here.append(unique)
 
+            # get all the possible combinations of the values of the parents
             combins = list(itertools.product(*here))
-            
 
             # for each combination, calculate the probability of each value of the column
             for combin in combins:
@@ -357,22 +344,19 @@ class BayesianNetwork:
                         b= combin[i]
                         if str(a) != b:
                             todrop.append(row)
+                # tmp represents the data file with the rows where the parents are equal to the combination
                 tmp.drop(todrop, inplace=True)
                 denom = len(tmp) + alpha * K
 
+                # Compute Laplacian smoothing
                 values = {}
                 sorted = np.sort(self.df[column].unique())
-                
-
                 for value in sorted:
                     num = len(tmp[tmp[column] == value]) + alpha
-                    
-
                     if denom != 0:
                         prob = num / denom
                     else:
                         prob = 0
-
                     values[str(value)] = prob
 
                 retour[combin] = values
@@ -380,15 +364,19 @@ class BayesianNetwork:
             self.variables[column].cpt.entries = retour
 
     def check_cylcle(self, variable_name, new_parent_name):
-
+        """
+        Check if adding a new parent to a variable will create a cycle in the graph.
+        """
+        # Get the parents of the variable
         parents = [parent.name for parent in self.variables[new_parent_name].cpt.parents]
 
         if parents == []:
             return False
-
+        # If the variable is already a parent of the new parent, it will create a cycle
         if variable_name in parents:
             return True
         else:
+            # Check if the parents of the new parent will create a cycle
             for p in parents:
                 if self.check_cylcle(variable_name, p):
                     return True
@@ -438,43 +426,7 @@ class BayesianNetwork:
         plt.show()
         
 
-
-    
-def local_movev1(bn, var_isolated):
-    """Simple local such that an isolated node can only be linked to another isolated node. Recusriv way"""
-    score = bn.score()
-    
-    if len(var_isolated) < 2:
-        return bn, score
-    else:
-        max_imp = 0
-        max_comp = []
-        for var1 in var_isolated:
-            for var2 in var_isolated:
-                if var1 != var2:
-                    bn.variables[var1].cpt.parents.append(bn.variables[var2])
-                    bn.computeCPT(var1)
-                    tmp = bn.score()
-                    if tmp > score:
-                        imp = tmp - score
-                        if imp > max_imp:
-                            max_imp = imp
-                            max_comp = [var1, var2]
-
-                    bn.variables[var1].cpt.parents.remove(bn.variables[var2])
-                    bn.computeCPT(var1)
-        
-        if max_imp > 0:
-            bn.variables[max_comp[0]].cpt.parents.append(bn.variables[max_comp[1]])
-            bn.computeCPT(max_comp[0])
-            var_isolated.remove(max_comp[0])
-            var_isolated.remove(max_comp[1])
-            bn, score = local_movev1(bn, var_isolated)
-
-            
-    return bn, bn.score()
-
-def local_movev2(bn, var_isolated, vars):
+def simple_local_move_recursiv(bn, var_isolated, vars):
     """Simple local such that an isolated node can be linked to any other node. Recusriv way"""
     score = bn.score()
     # best_score = max_score
@@ -504,12 +456,12 @@ def local_movev2(bn, var_isolated, vars):
             var_isolated.remove(max_comp[0])
             if max_comp[1] in var_isolated:
                 var_isolated.remove(max_comp[1])
-            bn, score = local_movev2(bn, var_isolated, vars)
+            bn, score = simple_local_move_recursiv(bn, var_isolated, vars)
 
             
     return bn, bn.score()
 
-def local_movev3(bn, var_isolated):
+def simple_local_move_iterativ(bn, var_isolated):
     """Simple local such that an isolated node can be linked to any other node. Iterative way"""
     vars = [var for var in var_isolated]
     score = bn.score()
@@ -517,9 +469,8 @@ def local_movev3(bn, var_isolated):
     max_score = score
     matrix_score = np.zeros((len(var_isolated),len(var_isolated)))
 
+    # Compute the score for each combination of variables
     for i,var1 in enumerate(var_isolated):
-        print(i)
-
         for j,var2 in enumerate(var_isolated):
             if var1 != var2:
                 bn.variables[var1].cpt.parents.append(bn.variables[var2])
@@ -528,15 +479,16 @@ def local_movev3(bn, var_isolated):
                 bn.variables[var1].cpt.parents.remove(bn.variables[var2])
                 bn.computeCPT(var1)
 
+    # Compute the difference of score for each combination of variables
     matrix_score -= max_score
     for i in range(len(var_isolated)):
         matrix_score[i,i] = -1
 
     while(len(var_isolated) > 0):
-                
         #max_value = np.max(matrix_score)
         i, j = np.unravel_index(matrix_score.argmax(), matrix_score.shape)     
 
+        # if there is no more positive score, stop
         if matrix_score[i,j] <= 0:
             break
         else:
@@ -544,15 +496,14 @@ def local_movev3(bn, var_isolated):
             var2 = vars[j]
             bn.variables[var1].cpt.parents.append(bn.variables[var2])
             bn.computeCPT(var1)
-            # delete the row and column of the max score
+            # delete the rows i 
             matrix_score = np.delete(matrix_score, i, 0)
-            #matrix_score = np.delete(matrix_score, i, 1)
             var_isolated.remove(var1)
 
+            # if the variable j is still in the list, delete the row j
             if var2 in var_isolated:
                 j = var_isolated.index(var2)
                 matrix_score = np.delete(matrix_score, j, 0)
-                #matrix_score = np.delete(matrix_score, j, 1)
                 var_isolated.remove(var2)
 
             
@@ -584,11 +535,11 @@ def SGS_local_move(bn, vars, score_function="", max_iterations=50, number_set=1,
     without_improvement = 0
     nbr_iter = 0
     while(nbr_iter<max_iterations and without_improvement<10):
-        ######## addon ########
+        # ####### addon ########
         # value_input(bn,  "./datasets/sachs/test_missing.csv", "./datasets/sachs/updated_test.csv")
         # acc = evaluate("./datasets/sachs/test_missing.csv", "./datasets/sachs/updated_test.csv", "./datasets/sachs/test.csv")
         # bn.accprogress.append(acc)
-        ######## end addon ########
+        # ####### end addon ########
         nbr_iter += 1
         
         x = random.choice(vars) # String
@@ -693,7 +644,8 @@ def SGS_local_move(bn, vars, score_function="", max_iterations=50, number_set=1,
                         bn.computeCPT(x)    
         
         # Display the result
-        print(best_score)
+
+        print("BIC score : ", best_score, end="\r")
         bn.progress.append(best_score)
         
 
@@ -721,12 +673,9 @@ def SGS_local_move(bn, vars, score_function="", max_iterations=50, number_set=1,
             without_improvement = 0
         else:
             # Increment the counter
-            print("no improvement")
             without_improvement += 1
 
     return bn, best_score
-
-
 
 def value_input(bn, file, file_destination):
     """Replace the missing values by the most probable value based on the Bayesian Network
@@ -747,28 +696,20 @@ def value_input(bn, file, file_destination):
         for col in df.columns:
             # verify if the value is missing
             if pd.notna(row[col]):
-                tmp = type(row[col])
-                if tmp != str:
-                    """if tmp == float:
-                        pa[col] = str(int(row[col]))
-                    else:
-                        pa[col] = str(row[col])"""
+                if type(row[col]) == float:
                     pa[col] = str(int(row[col]))
-                    
                 else:
-                    pa[col] = row[col]
+                    pa[col] = str(int(row[col]))
+                
                 
             else:
                 input.append(col)
-
-        
         
         # Compute the probability
         if len(input) == 0:
             continue
             
         elif len(input) == 1:
-
             distribution = bn.joint_distrib_simple(input[0], pa)
             # Get the key of the max value
             max_key = max(distribution, key=distribution.get)
@@ -799,24 +740,26 @@ def main(train_file, test_file, missing_file, netwrok_file):
         missing_file (string): File path of the writed file
         netwrok_file (string): File path of the network file
     """
-    # Init the BN
-    bn = BayesianNetwork(train_file)
-    bn.write(netwrok_file)
-    
-    # Learn the structure
-    vars = [var for var in bn.variables]
-    #bn, _ = SGS_local_move(bn, vars, "", 30, 2, 0.3)
-    
-    bn,score = local_movev3(bn, vars)
-    bn.write(netwrok_file)
-    bn.plot()
-    # Input the values
-    value_input(bn, test_file, missing_file)
+    try:
+        # Init the BN
+        bn = BayesianNetwork(train_file)
+        
+        # Learn the structure
+        vars = [var for var in bn.variables]
+        bn, _ = SGS_local_move(bn, vars, "BIC", 30, 2, 0.3)
+        
+        # Write the network
+        bn.write(netwrok_file)
+        
+        # Input the values
+        value_input(bn, test_file, missing_file)
 
-    bn.plot()
-    # bn.plot_progression()
-    # Write the network
-    # bn.write(netwrok_file)
+        print("Finish")
+    except:
+        print("value inputation failed")
+        print("new values appear in the test file (not in the train file)")
+        print("the network has been saved")
+    
 
     return 
 
@@ -852,19 +795,28 @@ def evaluate(missing_file, test_file_inputed, test_file):
 
     return accuracy/nbr_missing
 
+# Code to get the results
+# listoffile = os.listdir("./datasets")
+# scores = []
+# for file in listoffile:
+#     print(file)
+#     try:
+#         main("./datasets/"+file+"/train.csv", "./datasets/"+file+"/test_missing.csv", "./datasets/"+file+"/updated_test.csv" , "network.bif")
 
-listoffile = os.listdir("./datasets")
-listoffile = ["stormofswords"]
-#listoffile.remove("stormofswords")
-scores = []
-for file in listoffile:
-    print(file)
-    main("./datasets/"+file+"/train.csv", "./datasets/"+file+"/test_missing.csv", "./datasets/"+file+"/updated_test.csv" , "network.bif")
-    score = evaluate("./datasets/"+file+"/test_missing.csv", "./datasets/"+file+"/updated_test.csv", "./datasets/"+file+"/test.csv")
-    print(score)
-    scores.append(score)
+#         score = evaluate("./datasets/"+file+"/test_missing.csv", "./datasets/"+file+"/updated_test.csv", "./datasets/"+file+"/test.csv")
+#         print(score)
+#         scores.append(score)
+#     except:
+#         print("value inputation failed")
+#         print("new values appear in the test file (not in the train file)")
+#         print("the network has been saved")
+        
+
     
-print(scores)
+if __name__ == "__main__":
+    train = sys.argv[1]
+    test = sys.argv[2]
+    updated_test = sys.argv[3]
+    network = sys.argv[4]
+    main(train, test, updated_test, network)
     
-#BIC [0.7804878048780488, 0.9043062200956937, 0.7512820512820513, 0.902676399026764, 0.4768856447688564, 0.727735368956743, 0.85]
-#normal [0.8, 0.9186602870813397, 0.764102564102564, 0.8953771289537713, 0.4768856447688564, 0.7175572519083969, 0.85]
