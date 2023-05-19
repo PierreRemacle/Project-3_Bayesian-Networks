@@ -4,6 +4,7 @@ import numpy as np
 import itertools
 from copy import deepcopy
 import random
+import os
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -83,6 +84,7 @@ class BayesianNetwork:
     # objects having CPT objects.
     def __init__(self, input_file = None):
         self.progress=[]
+        self.accprogress=[]
         if (input_file == None):
             self.df = pd.DataFrame()
         else:
@@ -127,27 +129,16 @@ class BayesianNetwork:
             for col in dico:
                 prob *= self.P_Yisy_given_parents(col, dico[col], dico)
             score += np.log(prob)
-
+       
         return score
     def score_BIC(self):
-        score = 0
+        score = self.score()
         num_parameters = 0  # Number of free parameters
         nbr_values = {var.name: len(var.values) for var in self.variables.values()}
         #print(nbr_values)
-
-        col = self.df.columns.tolist()
         num_data_points = len(self.df)
 
-        for _, rows in self.df.iterrows():
-            prob = 1
-            dico = {}
 
-            for columns in self.df.columns:
-                dico[columns] = str(rows[columns])
-
-            for col in dico:
-                prob = self.P_Yisy_given_parents(col, dico[col], dico)
-            score += np.log(prob)
 
         # Calculate the number of free parameters
         for variable in self.variables.values():
@@ -159,7 +150,7 @@ class BayesianNetwork:
                 mult_parent *= nbr_values[parent.name]
 
             num_parameters += (nbr_values[variable.name]-1) * mult_parent
-
+        
         bic = score - (0.5 * num_parameters * np.log(num_data_points))
         #bic = score - num_parameters
         return bic
@@ -326,7 +317,8 @@ class BayesianNetwork:
                 self.computeCPT(columns, alpha, K)
 
     # Method for computing the CPT of a columns, given a data file and the bayesian network
-    def computeCPT(self, column, alpha=0, K=0):
+    def computeCPT(self, column, alpha=1, K=0):
+        K = len(self.variables)
         retour = {}
         # if no parents
         if len(self.variables[column].cpt.parents) == 0:
@@ -420,9 +412,26 @@ class BayesianNetwork:
         plt.savefig("net_asia3.pdf", bbox_inches='tight')
 
     def plot_progression(self):
-        plt.figure()
-        plt.plot(self.progress)
+                # Create figure and axes
+        fig, ax1 = plt.subplots()
+
+        # Plot the first line using ax1
+        ax1.plot(self.progress, color='blue')
+        ax1.set_xlabel('X')
+        ax1.set_ylabel('progress', color='blue')
+
+        # Create a second y-axis
+        ax2 = ax1.twinx()
+
+        # Plot the second line using ax2
+        ax2.plot(self.accprogress, color='red')
+        ax2.set_ylabel('accprogress', color='red')
+
+        # Display the plot
         plt.savefig("progression.pdf", bbox_inches='tight')
+        plt.show()
+        
+
 
     
 def local_movev1(bn, var_isolated):
@@ -566,11 +575,16 @@ def SGS_local_move(bn, vars, score_function="", max_iterations=50, number_set=1,
         best_score = bn.score_BIC()
     else:
         best_score = bn.score()
-
     without_improvement = 0
     nbr_iter = 0
-    while(nbr_iter<max_iterations or without_improvement<10):
+    while(nbr_iter<max_iterations and without_improvement<10):
+        ######## addon ########
+        # value_input(bn,  "./datasets/sachs/test_missing.csv", "./datasets/sachs/updated_test.csv")
+        # acc = evaluate("./datasets/sachs/test_missing.csv", "./datasets/sachs/updated_test.csv", "./datasets/sachs/test.csv")
+        # bn.accprogress.append(acc)
+        ######## end addon ########
         nbr_iter += 1
+        
         x = random.choice(vars) # String
 
         score_improvmement = best_score
@@ -612,7 +626,7 @@ def SGS_local_move(bn, vars, score_function="", max_iterations=50, number_set=1,
                             # if the score is better than the last one, store the action and the score
                             if tmp_score > score_improvmement:
                                 score_improvmement = tmp_score
-                                action = "add_" + x + "_" + node
+                                action = "add@" + x + "@" + node
 
                             # Reset the BN as before the add action
                             bn.variables[x].cpt.parents.remove(bn.variables[node])
@@ -633,7 +647,7 @@ def SGS_local_move(bn, vars, score_function="", max_iterations=50, number_set=1,
                         # if the score is better than the last one, store the action and the score
                         if tmp_score > score_improvmement:
                             score_improvmement = tmp_score
-                            action = "remove_" + x + "_" + node
+                            action = "remove@" + x + "@" + node
 
                         # Reset the BN as before the remove action
                         bn.variables[x].cpt.parents.append(bn.variables[node])
@@ -662,7 +676,7 @@ def SGS_local_move(bn, vars, score_function="", max_iterations=50, number_set=1,
                             # if the score is better than the last one, store the action and the score
                             if tmp_score > score_improvmement:
                                 score_improvmement = tmp_score
-                                action = "reverse_" + x + "_" + node
+                                action = "reverse@" + x + "@" + node
                             
                             # Reset the BN as before the add action
                             bn.variables[node].cpt.parents.remove(bn.variables[x])
@@ -675,6 +689,8 @@ def SGS_local_move(bn, vars, score_function="", max_iterations=50, number_set=1,
         # Display the result
         print(best_score)
         bn.progress.append(best_score)
+        
+
 
         # Apply the action and update the score if we have found an action
         # that gave a better score
@@ -684,16 +700,16 @@ def SGS_local_move(bn, vars, score_function="", max_iterations=50, number_set=1,
 
             # Apply the action
             if action.startswith("add"):
-                bn.variables[x].cpt.parents.append(bn.variables[action.split("_")[2]])
+                bn.variables[x].cpt.parents.append(bn.variables[action.split("@")[2]])
                 bn.computeCPT(x)
             elif action.startswith("remove"):
-                bn.variables[x].cpt.parents.remove(bn.variables[action.split("_")[2]])
+                bn.variables[x].cpt.parents.remove(bn.variables[action.split("@")[2]])
                 bn.computeCPT(x)
             elif action.startswith("reverse"):
-                bn.variables[x].cpt.parents.remove(bn.variables[action.split("_")[2]])
-                bn.variables[action.split("_")[2]].cpt.parents.append(bn.variables[x])
+                bn.variables[x].cpt.parents.remove(bn.variables[action.split("@")[2]])
+                bn.variables[action.split("@")[2]].cpt.parents.append(bn.variables[x])
                 bn.computeCPT(x)
-                bn.computeCPT(action.split("_")[2])
+                bn.computeCPT(action.split("@")[2])
             
             # Reset the counter
             without_improvement = 0
@@ -728,19 +744,29 @@ def value_input(bn, file, file_destination):
 
     # Iterate over the rows
     for index, row in df.iterrows():
+
         pa = {}
         input = []
         # Iterate over the columns
+   
         for col in df.columns:
             # verify if the value is missing
-            if row[col] == np.NaN:
-                input.append(col)
+            if pd.notna(row[col]):
+                if type(row[col]) == float:
+                    pa[col] = str(int(row[col]))
+                else:
+                    pa[col] = str(int(row[col]))
+                
+                
             else:
-
-                pa[col] = str(int(row[col]))
+                input.append(col)
+        
         # Compute the probability
-        if len(input) == 1:
-            distribution = bn.joint_distrib_single(input[0], pa)
+        if len(input) == 0:
+            continue
+            
+        elif len(input) == 1:
+            distribution = bn.joint_distrib_simple(input[0], pa)
             # Get the key of the max value
             max_key = max(distribution, key=distribution.get)
             # Replace the missing value by the max key
@@ -748,12 +774,14 @@ def value_input(bn, file, file_destination):
 
         elif len(input) == 2:
             distribution = bn.joint_distrib_double(input, pa)
+            
             # Get the key of the max value
             max_key = max(distribution, key=distribution.get)
             # Replace the missing value by the max key
             df.loc[index, input[0]] = max_key[0]
             df.loc[index, input[1]] = max_key[1]
         else:
+            
             print("Not implemented for more than 2 missing values")
 
     df.to_csv(file_destination, index=False)
@@ -770,17 +798,20 @@ def main(train_file, test_file, missing_file, netwrok_file):
     """
     # Init the BN
     bn = BayesianNetwork(train_file)
-
+    
     # Learn the structure
     vars = [var for var in bn.variables]
-    bn, _ = SGS_local_move(bn, vars, "", 50, 2, 0.3)
-
+    # bn, _ = SGS_local_move(bn, vars, "", 30, 2, 0.3)
+    
+    bn,score = local_movev3(bn, vars)
+    bn.plot()
     # Input the values
     value_input(bn, test_file, missing_file)
 
-
+    bn.plot()
+    # bn.plot_progression()
     # Write the network
-    bn.write(netwrok_file)
+    # bn.write(netwrok_file)
 
     return 
 
@@ -807,17 +838,27 @@ def evaluate(missing_file, test_file_inputed, test_file):
         # Iterate over the columns
         for col in missing_file.columns:
             # verify if the value is missing
-            if row[col] == np.NaN:
+            if not(pd.notna(row[col])):
                 nbr_missing += 1
-                if str(correct_test.loc[index, col]) == inputed_test.loc[index, col]:
+                if str(correct_test.loc[index, col]) == str(int(inputed_test.loc[index, col])):
                     accuracy += 1
-    
+          
     print("Accuracy: ", accuracy/nbr_missing)
 
     return accuracy/nbr_missing
 
 
-
-
-
-
+listoffile = os.listdir("./datasets")
+listoffile.remove("stormofswords")
+scores = []
+for file in listoffile:
+    print(file)
+    main("./datasets/"+file+"/train.csv", "./datasets/"+file+"/test_missing.csv", "./datasets/"+file+"/updated_test.csv" , "network.bif")
+    score = evaluate("./datasets/"+file+"/test_missing.csv", "./datasets/"+file+"/updated_test.csv", "./datasets/"+file+"/test.csv")
+    print(score)
+    scores.append(score)
+    
+print(scores)
+    
+#BIC [0.7804878048780488, 0.9043062200956937, 0.7512820512820513, 0.902676399026764, 0.4768856447688564, 0.727735368956743, 0.85]
+#normal [0.8, 0.9186602870813397, 0.764102564102564, 0.8953771289537713, 0.4768856447688564, 0.7175572519083969, 0.85]
