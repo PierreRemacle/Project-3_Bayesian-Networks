@@ -318,7 +318,7 @@ class BayesianNetwork:
 
     # Method for computing the CPT of a columns, given a data file and the bayesian network
     def computeCPT(self, column, alpha=1, K=0):
-        K = len(self.variables)
+        K = len(self.variables[column].values)
         retour = {}
         # if no parents
         if len(self.variables[column].cpt.parents) == 0:
@@ -342,11 +342,13 @@ class BayesianNetwork:
                 here.append(unique)
 
             combins = list(itertools.product(*here))
+            
 
             # for each combination, calculate the probability of each value of the column
             for combin in combins:
                 tmp = self.df.copy()
                 todrop = []
+
                 for row in tmp.index:                   
                     for i in range(len(combin)):
                         par =parents_name[i]
@@ -355,18 +357,22 @@ class BayesianNetwork:
                         b= combin[i]
                         if str(a) != b:
                             todrop.append(row)
-                          
                 tmp.drop(todrop, inplace=True)
                 denom = len(tmp) + alpha * K
 
                 values = {}
                 sorted = np.sort(self.df[column].unique())
+                
+
                 for value in sorted:
                     num = len(tmp[tmp[column] == value]) + alpha
+                    
+
                     if denom != 0:
                         prob = num / denom
                     else:
                         prob = 0
+
                     values[str(value)] = prob
 
                 retour[combin] = values
@@ -720,18 +726,7 @@ def SGS_local_move(bn, vars, score_function="", max_iterations=50, number_set=1,
 
     return bn, best_score
 
-"""def find_best_graph(file):
-    bn = BayesianNetwork(file)
-    var_isolated = [var for var in bn.variables]
-    #bn, max_score = local_movev4(bn, var_isolated, "")
 
-    #test = bn.score_BIC()
-    bn, max_score = local_movev3(bn, var_isolated)
-    bn.write("test.bif")
-    bn.plot()
-    bn.plot_progression()
-
-    return bn, max_score"""
 
 def value_input(bn, file, file_destination):
     """Replace the missing values by the most probable value based on the Bayesian Network
@@ -752,20 +747,28 @@ def value_input(bn, file, file_destination):
         for col in df.columns:
             # verify if the value is missing
             if pd.notna(row[col]):
-                if type(row[col]) == float:
+                tmp = type(row[col])
+                if tmp != str:
+                    """if tmp == float:
+                        pa[col] = str(int(row[col]))
+                    else:
+                        pa[col] = str(row[col])"""
                     pa[col] = str(int(row[col]))
+                    
                 else:
-                    pa[col] = str(int(row[col]))
-                
+                    pa[col] = row[col]
                 
             else:
                 input.append(col)
+
+        
         
         # Compute the probability
         if len(input) == 0:
             continue
             
         elif len(input) == 1:
+
             distribution = bn.joint_distrib_simple(input[0], pa)
             # Get the key of the max value
             max_key = max(distribution, key=distribution.get)
@@ -798,12 +801,14 @@ def main(train_file, test_file, missing_file, netwrok_file):
     """
     # Init the BN
     bn = BayesianNetwork(train_file)
+    bn.write(netwrok_file)
     
     # Learn the structure
     vars = [var for var in bn.variables]
-    # bn, _ = SGS_local_move(bn, vars, "", 30, 2, 0.3)
+    #bn, _ = SGS_local_move(bn, vars, "", 30, 2, 0.3)
     
     bn,score = local_movev3(bn, vars)
+    bn.write(netwrok_file)
     bn.plot()
     # Input the values
     value_input(bn, test_file, missing_file)
@@ -849,7 +854,8 @@ def evaluate(missing_file, test_file_inputed, test_file):
 
 
 listoffile = os.listdir("./datasets")
-listoffile.remove("stormofswords")
+listoffile = ["stormofswords"]
+#listoffile.remove("stormofswords")
 scores = []
 for file in listoffile:
     print(file)
